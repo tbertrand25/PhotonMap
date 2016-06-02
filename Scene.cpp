@@ -10,7 +10,7 @@
 
 Scene::Scene(View v, std::vector<Surface*> s)
 {
-  img_view = v;
+  viewer = v;
   surfaces = s;
 }
 
@@ -19,9 +19,19 @@ Scene::~Scene()
   
 }
 
+std::vector<Surface*> Scene::get_surfaces()
+{
+  return surfaces;
+}
+
+View Scene::get_view()
+{
+  return viewer;
+}
+
 std::ostream &operator << (std::ostream &os, const Scene &s )
 {
-  os << "\n" << s.img_view;
+  os << "\n" << s.viewer;
   
   for(Surface* surf : s.surfaces)
   {

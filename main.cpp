@@ -19,8 +19,7 @@
 
 namespace
 {
-  
-// Processes a rayfile from an istream and returns the scene
+// Processes a rayfile from an istream and returns the resulting Scene object
 Scene process_rayfile(std::istream &ins)
 {
   // Begin tag for rayfile
@@ -59,6 +58,13 @@ Scene process_rayfile(std::istream &ins)
 
 int main(int argc, const char * argv[]) {
   Scene img_scene = process_rayfile(std::cin);
+  
+  Hit *h = new Hit();
+  for(Surface *i : img_scene.get_surfaces())
+  {
+    std::clog << i->intersect(new Ray(arma::vec3({0, 0, 5}), arma::vec3({0, 0, -1})), h) << std::endl;
+    std::clog << "  t: " << h->get_t() << std::endl;
+  }
   std::clog << img_scene << std::endl;
   return 0;
 }

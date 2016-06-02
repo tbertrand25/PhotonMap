@@ -7,13 +7,3 @@
 //
 
 #include "Surface.hpp"
-
-Surface::Surface()
-{
-  
-}
-
-Surface::~Surface()
-{
-  
-}

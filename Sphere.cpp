@@ -6,6 +6,8 @@
 //  Copyright © 2016 Tyler Bertrand. All rights reserved.
 //
 
+#include <math.h>
+
 #include "Sphere.hpp"
 
 Sphere::Sphere(std::istream &ins)
@@ -20,9 +22,44 @@ Sphere::~Sphere()
 
 bool Sphere::intersect(Ray *r, Hit *h)
 {
+  double t, t0, t1;
+  
+  arma::vec3 L = center - r->get_origin();
+  float tca = arma::dot(L, r->get_direction());
+  
+  if(tca < 0)
+    return false;
+  
+  double d2 = arma::dot(L, L) - (tca * tca);
+  
+  if(d2 < 0)
+    return false;
+  if(d2 > (radius * radius))
+    return false;
+  else
+  {
+    double thc = sqrt((radius * radius) - d2);
+    t0 = tca - thc;
+    t1 = tca + thc;
+  }
+  
+  if(t0 < 0 && t1 < 0)
+    return false;
+  else if(t0 < t1 && t0 >= 0)
+    t = t0;
+  else
+    t = t1;
+  
+  if(t < h->get_t())
+  {
+    delete h;
+    h = new Hit(t);
+  }
+  
   return true;
 }
 
+// Reads a sphere object from istream and initializes the Sphere object
 void Sphere::read(std::istream &ins)
 {
   const std::string END_SPHERE_TAG = "end_sphere";

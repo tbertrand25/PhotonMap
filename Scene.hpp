@@ -20,11 +20,14 @@ class Scene
 {
 private:
   std::vector<Surface*> surfaces;
-  View img_view;
+  View viewer;
   
 public:
   Scene(View v, std::vector<Surface*> s);
   ~Scene();
+  
+  std::vector<Surface*> get_surfaces();
+  View get_view();
   
   friend std::ostream& operator << ( std::ostream& os, const Scene &s);
 };

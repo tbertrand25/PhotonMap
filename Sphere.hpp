@@ -20,7 +20,7 @@ private:
   double radius;
   arma::vec3 center;
   
-  virtual void read(std::istream &ins) override;
+  void read(std::istream &ins) override;
   
 public:
   Sphere(std::istream &ins);

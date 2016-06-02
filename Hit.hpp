@@ -11,15 +11,22 @@
 
 #include <stdio.h>
 #include <armadillo>
+#include <limits>
 
 class Hit
 {
 private:
-  double t;
+  double t = std::numeric_limits<double>::infinity();
   
 public:
+  Hit();
   Hit(double t);
   ~Hit();
+  
+  void set_t(double t);
+  double get_t();
+  
+  Hit& operator= (const Hit &h);
 };
 
 #endif /* Hit_hpp */

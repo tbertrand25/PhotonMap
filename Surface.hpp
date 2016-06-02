@@ -23,9 +23,6 @@ private:
 public:
   arma::vec3 color;
   
-  Surface();
-  ~Surface();
-  
   virtual void print(std::ostream &os) = 0;
   virtual bool intersect(Ray *r, Hit *h) = 0;
 };
