@@ -20,7 +20,11 @@ Sphere::~Sphere()
   
 }
 
-bool Sphere::intersect(Ray *r, Hit *h)
+// Tests r for intersection against <this>.
+// Returns true if r intersects <this> in front of the viewing eye, else
+//   returns false.
+// Hit stores t value for the intersection.
+bool Sphere::intersect(Ray *r, std::shared_ptr<Hit> h)
 {
   double t, t0, t1;
   
@@ -52,8 +56,7 @@ bool Sphere::intersect(Ray *r, Hit *h)
   
   if(t < h->get_t())
   {
-    delete h;
-    h = new Hit(t);
+    *h = Hit(t);
   }
   
   return true;
@@ -105,6 +108,7 @@ void Sphere::read(std::istream &ins)
       ins >> color(2);
     }
   }
+  // TODO: check that all required parameters have been seen
 }
 
 void Sphere::print(std::ostream &os)

@@ -9,6 +9,7 @@
 #include <iostream>
 #include <stdio.h>
 #include <math.h>
+#include <memory>
 #include <armadillo>
 
 #include "Scene.hpp"
@@ -37,7 +38,7 @@ Scene process_rayfile(std::istream &ins)
   bool seen_view = false;
   
   View img_view;
-  std::vector<Surface*> surfaces;
+  std::vector<std::shared_ptr<Surface>> surfaces;
   
   while(!ins.eof())
   {
@@ -49,7 +50,7 @@ Scene process_rayfile(std::istream &ins)
     }
     else if(tok == BEGIN_SPHERE)
     {
-      surfaces.push_back(new Sphere(ins));
+      surfaces.push_back(std::make_shared<Sphere>(ins));
     }
   }
   return Scene(img_view, surfaces);
@@ -59,13 +60,16 @@ Scene process_rayfile(std::istream &ins)
 int main(int argc, const char * argv[]) {
   Scene img_scene = process_rayfile(std::cin);
   
-  Hit *h = new Hit();
-  for(Surface *i : img_scene.get_surfaces())
+  auto h = std::make_shared<Hit>();
+  
+  for(auto i : img_scene.get_surfaces())
   {
     std::clog << i->intersect(new Ray(arma::vec3({0, 0, 5}), arma::vec3({0, 0, -1})), h) << std::endl;
     std::clog << "  t: " << h->get_t() << std::endl;
   }
+  
   std::clog << img_scene << std::endl;
+  
   return 0;
 }
 

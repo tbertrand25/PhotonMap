@@ -10,6 +10,7 @@
 #define Sphere_hpp
 
 #include <stdio.h>
+#include <memory>
 #include <armadillo>
 
 #include "Surface.hpp"
@@ -27,7 +28,7 @@ public:
   ~Sphere();
   
   void print(std::ostream &os) override;
-  bool intersect(Ray *r, Hit *h) override;
+  bool intersect(Ray *r, std::shared_ptr<Hit> h) override;
 };
 
 #endif /* Sphere_hpp */

@@ -36,7 +36,7 @@ void View::read(std::istream &ins)
   const std::string UP_TAG = "up";
   const std::string FOCAL_TAG = "focal";
   
-  // Tracks whether or not we have seen the required parameters
+  // Tracks whether or not the required paramters have been seen
   bool seen_end = false;
   bool seen_coi = false;
   bool seen_eye = false;
@@ -102,6 +102,8 @@ void View::read(std::istream &ins)
       ins >> focal_length;
     }
   }
+  
+  // TODO: check that all required parameters have been seen
   
   viewport_height = viewport_width / aspect_ratio;
   y_res = round(x_res / aspect_ratio);

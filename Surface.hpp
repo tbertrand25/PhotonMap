@@ -10,6 +10,7 @@
 #define Surface_hpp
 
 #include <stdio.h>
+#include <memory>
 #include <armadillo>
 
 #include "Hit.hpp"
@@ -20,11 +21,12 @@ class Surface
 private:
   virtual void read(std::istream &ins) = 0;
   
-public:
+protected:
   arma::vec3 color;
   
+public:
+  virtual bool intersect(Ray *r, std::shared_ptr<Hit> h) = 0;
   virtual void print(std::ostream &os) = 0;
-  virtual bool intersect(Ray *r, Hit *h) = 0;
 };
 
 #endif /* Surface_hpp */

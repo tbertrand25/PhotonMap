@@ -10,6 +10,7 @@
 #define Scene_hpp
 
 #include <stdio.h>
+#include <memory>
 #include <armadillo>
 #include <vector>
 
@@ -19,14 +20,14 @@
 class Scene
 {
 private:
-  std::vector<Surface*> surfaces;
+  std::vector<std::shared_ptr<Surface>> surfaces;
   View viewer;
   
 public:
-  Scene(View v, std::vector<Surface*> s);
+  Scene(View v, std::vector<std::shared_ptr<Surface>> s);
   ~Scene();
   
-  std::vector<Surface*> get_surfaces();
+  std::vector<std::shared_ptr<Surface>> get_surfaces();
   View get_view();
   
   friend std::ostream& operator << ( std::ostream& os, const Scene &s);

@@ -8,7 +8,7 @@
 
 #include "Scene.hpp"
 
-Scene::Scene(View v, std::vector<Surface*> s)
+Scene::Scene(View v, std::vector<std::shared_ptr<Surface>> s)
 {
   viewer = v;
   surfaces = s;
@@ -19,7 +19,7 @@ Scene::~Scene()
   
 }
 
-std::vector<Surface*> Scene::get_surfaces()
+std::vector<std::shared_ptr<Surface>> Scene::get_surfaces()
 {
   return surfaces;
 }
@@ -33,7 +33,7 @@ std::ostream &operator << (std::ostream &os, const Scene &s )
 {
   os << "\n" << s.viewer;
   
-  for(Surface* surf : s.surfaces)
+  for(auto surf : s.surfaces)
   {
     os << "\n";
     surf->print(os);
