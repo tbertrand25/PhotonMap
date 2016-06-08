@@ -24,7 +24,7 @@ Sphere::~Sphere()
 // Returns true if r intersects <this> in front of the viewing eye, else
 //   returns false.
 // Hit stores t value for the intersection.
-bool Sphere::intersect(Ray *r, std::shared_ptr<Hit> h)
+bool Sphere::intersect(std::shared_ptr<Ray> r, std::shared_ptr<Hit> h)
 {
   double t, t0, t1;
   

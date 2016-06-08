@@ -25,7 +25,7 @@ protected:
   arma::vec3 color;
   
 public:
-  virtual bool intersect(Ray *r, std::shared_ptr<Hit> h) = 0;
+  virtual bool intersect(std::shared_ptr<Ray> r, std::shared_ptr<Hit> h) = 0;
   virtual void print(std::ostream &os) = 0;
 };
 

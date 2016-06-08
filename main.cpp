@@ -64,7 +64,7 @@ int main(int argc, const char * argv[]) {
   
   for(auto i : img_scene.get_surfaces())
   {
-    std::clog << i->intersect(new Ray(arma::vec3({0, 0, 5}), arma::vec3({0, 0, -1})), h) << std::endl;
+    std::clog << i->intersect(std::make_shared<Ray>(arma::vec3({0, 0, 5}), arma::vec3({0, 0, -1})), h) << std::endl;
     std::clog << "  t: " << h->get_t() << std::endl;
   }
   

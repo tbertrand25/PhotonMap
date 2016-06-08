@@ -28,7 +28,7 @@ public:
   ~Sphere();
   
   void print(std::ostream &os) override;
-  bool intersect(Ray *r, std::shared_ptr<Hit> h) override;
+  bool intersect(std::shared_ptr<Ray> r, std::shared_ptr<Hit> h) override;
 };
 
 #endif /* Sphere_hpp */
