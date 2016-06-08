@@ -7,6 +7,7 @@
 //
 
 #include <math.h>
+#include <limits>
 
 #include "Sphere.hpp"
 
@@ -36,7 +37,7 @@ bool Sphere::intersect(std::shared_ptr<Ray> r, std::shared_ptr<Hit> h)
   
   double d2 = arma::dot(L, L) - (tca * tca);
   
-  if(d2 < 0)
+  if(d2 < 0 - 0.00001)
     return false;
   if(d2 > (radius * radius))
     return false;
@@ -56,7 +57,7 @@ bool Sphere::intersect(std::shared_ptr<Ray> r, std::shared_ptr<Hit> h)
   
   if(t < h->get_t())
   {
-    *h = Hit(t);
+    *h = Hit(t, color);
   }
   
   return true;

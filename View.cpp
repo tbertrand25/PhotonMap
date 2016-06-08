@@ -113,6 +113,51 @@ void View::read(std::istream &ins)
   v = arma::cross(w, u);
 }
 
+double View::get_x_res()
+{
+  return x_res;
+}
+
+double View::get_y_res()
+{
+  return y_res;
+}
+
+double View::get_view_width()
+{
+  return viewport_width;
+}
+
+double View::get_view_height()
+{
+  return viewport_height;
+}
+
+double View::get_focal()
+{
+  return focal_length;
+}
+
+arma::vec3 View::get_u()
+{
+  return u;
+}
+
+arma::vec3 View::get_v()
+{
+  return v;
+}
+
+arma::vec3 View::get_w()
+{
+  return w;
+}
+
+arma::vec3 View::get_eye()
+{
+  return eye;
+}
+
 std::ostream &operator << (std::ostream &os, const View &v )
 {
   os << "coi: [" << v.coi(0) << ", " << v.coi(1) << ", " << v.coi(2) << "]\n";

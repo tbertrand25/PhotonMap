@@ -17,14 +17,15 @@ class Hit
 {
 private:
   double t = std::numeric_limits<double>::infinity();
+  arma::vec3 color;
   
 public:
   Hit();
-  Hit(double t);
+  Hit(double t, arma::vec3 color);
   ~Hit();
   
-  void set_t(double t);
   double get_t();
+  arma::vec3 get_color();
   
   Hit& operator= (const Hit &h);
 };

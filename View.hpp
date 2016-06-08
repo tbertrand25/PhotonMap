@@ -46,6 +46,16 @@ public:
   
   void read(std::istream &ins);
   
+  double get_x_res();
+  double get_y_res();
+  double get_view_width();
+  double get_view_height();
+  double get_focal();
+  arma::vec3 get_u();
+  arma::vec3 get_v();
+  arma::vec3 get_w();
+  arma::vec3 get_eye();
+  
   friend std::ostream& operator << (std::ostream& os, const View &v);
 };
 

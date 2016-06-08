@@ -27,6 +27,11 @@ protected:
 public:
   virtual bool intersect(std::shared_ptr<Ray> r, std::shared_ptr<Hit> h) = 0;
   virtual void print(std::ostream &os) = 0;
+  
+  arma::vec3 get_color()
+  {
+    return color;
+  }
 };
 
 #endif /* Surface_hpp */

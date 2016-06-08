@@ -13,9 +13,10 @@ Hit::Hit()
 
 }
 
-Hit::Hit(double t)
+Hit::Hit(double t, arma::vec3 color)
 {
   this->t = t;
+  this->color = color;
 }
 
 Hit::~Hit()
@@ -23,9 +24,9 @@ Hit::~Hit()
   
 }
 
-void Hit::set_t(double t)
+arma::vec3 Hit::get_color()
 {
-  this->t = t;
+  return color;
 }
 
 double Hit::get_t()
@@ -36,6 +37,7 @@ double Hit::get_t()
 Hit& Hit::operator= (const Hit &h)
 {
   t = h.t;
+  color = h.color;
   
   return *this;
 }

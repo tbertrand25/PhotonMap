@@ -14,6 +14,7 @@
 #include <armadillo>
 
 #include "Surface.hpp"
+#include "Tracer.h"
 
 class Sphere : public Surface
 {
