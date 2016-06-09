@@ -2,7 +2,7 @@
 //  Surface.hpp
 //  PhotonMap
 //
-//  Created by Tyler Bertrand on 5/27/16.
+//  Created by Tyler Bertrand on 6/8/16.
 //  Copyright © 2016 Tyler Bertrand. All rights reserved.
 //
 
@@ -15,6 +15,7 @@
 
 #include "Hit.hpp"
 #include "Ray.hpp"
+#include "View.hpp"
 
 class Surface
 {
@@ -23,15 +24,15 @@ private:
   
 protected:
   arma::vec3 color;
+  arma::vec3 ambient;
+  arma::vec3 reflectivity;
+  double diffuse;
+  double phong;
   
 public:
   virtual bool intersect(std::shared_ptr<Ray> r, std::shared_ptr<Hit> h) = 0;
   virtual void print(std::ostream &os) = 0;
-  
-  arma::vec3 get_color()
-  {
-    return color;
-  }
 };
 
 #endif /* Surface_hpp */
+

@@ -12,11 +12,15 @@
 #include <armadillo>
 #include <limits>
 #include <iostream>
+#include <algorithm>
+#include <math.h>
 
 #include "Scene.hpp"
 
 namespace tracer
 {
+  static arma::vec3 raycolor(std::shared_ptr<Ray> r, std::shared_ptr<Hit> h, Scene s, int hit_ct);
+  
   static arma::vec3 calc_view_ray_direction(double row, double col, View v)
   {
     const double x_res = v.get_x_res();
@@ -44,15 +48,78 @@ namespace tracer
     return arma::normalise(viewport_pt - v.get_eye());
   }
   
-  static arma::vec3 raycolor(std::shared_ptr<Ray> r, std::shared_ptr<Hit> h, Scene s)
+  static arma::vec3 phong_shading(std::shared_ptr<Ray> r, std::shared_ptr<Hit> h, Scene s, int hit_ct)
+  {
+    arma::vec3 ambient_term;
+    arma::vec3 diffuse_term;
+    arma::vec3 specular_term;
+    arma::vec3 reflection_term;
+    
+    arma::vec3 diffuse_temp;
+    arma::vec3 specular_temp;
+    
+    arma::vec3 light_direction;
+    
+    for(int i = 0; i < 3; i++)
+      ambient_term(i) = h->get_ambient()(i) * h->get_color()(i);
+    
+    for(auto light : s.get_lights())
+    {
+      light_direction = arma::normalise(light->get_position() - h->get_pt());
+      
+      //shadow
+      auto shadow_r = std::make_shared<Ray>(h->get_pt(), light_direction);
+      auto shadow_h = std::make_shared<Hit>();
+      
+      for(auto i : s.get_surfaces())
+        i->intersect(shadow_r, shadow_h);
+      
+      if(shadow_h->get_t() != std::numeric_limits<double>::infinity())
+        continue;
+      
+      diffuse_temp = std::max(double(0), arma::dot(h->get_normal(), light_direction)) * light->get_color();
+      
+      for(int i = 0; i < 3; i++)
+        diffuse_temp(i) *= h->get_color()(i) * h->get_diffuse();
+      
+      arma::vec3 half = arma::normalise(((2 * dot(light_direction, h->get_normal())) * h->get_normal()) - light_direction);
+      specular_temp = pow(std::max(arma::dot(half, arma::normalise(s.get_view().get_eye() - h->get_pt())), double(0)), h->get_phong()) * light->get_color();
+      
+      diffuse_term += diffuse_temp;
+      specular_term += specular_temp;
+    }
+    
+    diffuse_term /= s.get_lights().size() / 1.5;
+    specular_term /= s.get_lights().size() / 1.5;
+    
+    //reflection
+    arma::vec3 ref_dir = arma::normalise(r->get_direction() - (2*arma::dot(r->get_direction(), h->get_normal()) * h->get_normal()));
+    
+    auto ref_ray = std::make_shared<Ray>(h->get_pt(), ref_dir);
+    auto ref_hit = std::make_shared<Hit>();
+    
+    if(hit_ct < 2)
+    {
+      reflection_term = raycolor(ref_ray, ref_hit, s, hit_ct + 1);
+      
+      for(int i = 0; i < 3; i++)
+        reflection_term(i) *= h->get_reflectivity()(i);
+    }
+    else
+      reflection_term = arma::vec3({0,0,0});
+    
+    return ambient_term + diffuse_term + specular_term + reflection_term;
+  }
+  
+  static arma::vec3 raycolor(std::shared_ptr<Ray> r, std::shared_ptr<Hit> h, Scene s, int hit_ct)
   {
     for(auto i : s.get_surfaces())
       i->intersect(r, h);
     
     if(h->get_t() != std::numeric_limits<double>::infinity())
-      return h->get_color();
+      return phong_shading(r, h, s, hit_ct);
     else
-      return arma::vec3({0,0,0});
+      return arma::vec3({0.15,0.15,0.15}) / (hit_ct + 1);
   }
 }
 
