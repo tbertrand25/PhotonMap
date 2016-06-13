@@ -15,6 +15,7 @@
 #include "Scene.hpp"
 #include "View.hpp"
 #include "Sphere.hpp"
+#include "Quad.hpp"
 #include "Ray.hpp"
 #include "Hit.hpp"
 #include "Light.hpp"
@@ -31,6 +32,9 @@ Scene process_rayfile(std::istream &ins)
   
   // Begin tag for sphere definition
   const std::string BEGIN_SPHERE = "begin_sphere";
+  
+  // Begin tag for quad definition
+  const std::string BEGIN_QUAD = "begin_quad";
   
   // Begin tag for view definition
   const std::string BEGIN_VIEW = "begin_view";
@@ -58,6 +62,10 @@ Scene process_rayfile(std::istream &ins)
     else if(tok == BEGIN_SPHERE)
     {
       surfaces.push_back(std::make_shared<Sphere>(ins));
+    }
+    else if(tok == BEGIN_QUAD)
+    {
+      surfaces.push_back(std::make_shared<Quad>(ins));
     }
     else if(tok == BEGIN_LIGHT)
     {
@@ -98,7 +106,7 @@ int main(int argc, const char * argv[]) {
     }
   }
   
-  //std::clog << img_scene << std::endl;
+  std::clog << img_scene << std::endl;
   
   return 0;
 }

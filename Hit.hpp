@@ -27,7 +27,8 @@ private:
   
 public:
   Hit();
-  Hit(double t, arma::vec3 pt, arma::vec3 normal, arma::vec3 color, arma::vec3 ambient, double diffuse, double phong, arma::vec3 reflectivity);
+  Hit(double t, arma::vec3 pt, arma::vec3 normal, arma::vec3 color,
+      arma::vec3 ambient, double diffuse, double phong, arma::vec3 reflectivity);
   ~Hit();
   
   double get_t();

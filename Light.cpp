@@ -71,6 +71,7 @@ void Light::read(std::istream &ins)
 
 std::ostream &operator << (std::ostream &os, const Light &l)
 {
+  os << "Light:\n";
   os << "position: [" << l.position(0) << ", " << l.position(1) << ", " << l.position(2) << "]\n";
   os << "color: [" << l.color(0) << ", " << l.color(1) << ", " << l.color(2) << "]\n";
   return os;
