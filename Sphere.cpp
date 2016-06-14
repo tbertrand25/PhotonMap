@@ -59,7 +59,7 @@ bool Sphere::intersect(std::shared_ptr<Ray> r, std::shared_ptr<Hit> h)
   {
     arma::vec3 pt = r->get_origin() + (t * r->get_direction());
     arma::vec3 normal = arma::normalise(pt - center);
-    *h = Hit(t, pt, normal, color, ambient, diffuse, phong, reflectivity);
+    *h = Hit(t, pt, normal, mat);
   }
   
   return true;
@@ -72,20 +72,12 @@ void Sphere::read(std::istream &ins)
   
   const std::string POSITION_TAG = "position";
   const std::string RADIUS_TAG = "radius";
-  const std::string COLOR_TAG = "color";
-  const std::string AMBIENT_TAG = "ambient";
-  const std::string DIFFUSE_TAG = "diffuse";
-  const std::string PHONG_TAG = "phong";
-  const std::string REFLECTIVITY_TAG = "reflectivity";
+  const std::string MATERIAL_TAG = "color";
   
   bool seen_end_tag = false;
   bool seen_position = false;
   bool seen_radius = false;
-  bool seen_color = false;
-  bool seen_ambient = false;
-  bool seen_diffuse = false;
-  bool seen_phong = false;
-  bool seen_reflectivity = false;
+  bool seen_material = false;
   
   std::string tok;
   
@@ -110,41 +102,10 @@ void Sphere::read(std::istream &ins)
       seen_radius = true;
       ins >> radius;
     }
-    else if(tok == COLOR_TAG)
+    else if(tok == MATERIAL_TAG)
     {
-      seen_color = true;
-      
-      ins >> color(0);
-      ins >> color(1);
-      ins >> color(2);
-    }
-    else if(tok == AMBIENT_TAG)
-    {
-      seen_ambient = true;
-      
-      ins >> ambient(0);
-      ins >> ambient(1);
-      ins >> ambient(2);
-    }
-    else if(tok == DIFFUSE_TAG)
-    {
-      seen_diffuse = true;
-      
-      ins >> diffuse;
-    }
-    else if(tok == PHONG_TAG)
-    {
-      seen_phong = true;
-      
-      ins >> phong;
-    }
-    else if(tok == REFLECTIVITY_TAG)
-    {
-      seen_reflectivity = true;
-      
-      ins >> reflectivity(0);
-      ins >> reflectivity(1);
-      ins >> reflectivity(2);
+      seen_material = true;
+      mat = std::make_shared<Material>(ins);
     }
   }
   // TODO: check that all required parameters have been seen
@@ -154,9 +115,5 @@ void Sphere::print(std::ostream &os)
 {
   os << "radius: " << radius << "\n";
   os << "center: [" << center(0) << ", " << center(1) << ", " << center(2) << "]\n";
-  os << "color: [" << color(0) << ", " << color(1) << ", " << color(2) << "]\n";
-  os << "ambient: [" << ambient(0) << ", " << ambient(1) << ", " << ambient(2) << "]\n";
-  os << "diffuse: " << diffuse << "\n";
-  os << "phong: " << phong << "\n";
-  os << "reflectivity: [" << reflectivity(0) << ", " << reflectivity(1) << ", " << reflectivity(2) << "]\n";
+  mat->print(os);
 }

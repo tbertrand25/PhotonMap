@@ -16,6 +16,7 @@
 #include "Hit.hpp"
 #include "Ray.hpp"
 #include "View.hpp"
+#include "Material.hpp"
 
 class Surface
 {
@@ -23,11 +24,7 @@ private:
   virtual void read(std::istream &ins) = 0;
   
 protected:
-  arma::vec3 color;
-  arma::vec3 ambient;
-  arma::vec3 reflectivity;
-  double diffuse;
-  double phong;
+  std::shared_ptr<Material> mat;
   
 public:
   virtual bool intersect(std::shared_ptr<Ray> r, std::shared_ptr<Hit> h) = 0;

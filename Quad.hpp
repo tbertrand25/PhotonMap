@@ -16,6 +16,7 @@
 
 #include "Surface.hpp"
 #include "Tracer.h"
+#include "Material.hpp"
 
 class Quad : public Surface
 {
