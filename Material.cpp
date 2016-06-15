@@ -7,6 +7,7 @@
 //
 
 #include "Material.hpp"
+#include "Tracer.h"
 
 Material::Material(std::istream &ins)
 {
@@ -43,6 +44,36 @@ double Material::get_phong()
   return phong;
 }
 
+unsigned long Material::get_tex_x_size()
+{
+  return tex_colors.size();
+}
+
+unsigned long Material::get_tex_y_size()
+{
+  return tex_colors.size();
+}
+
+arma::vec3 Material::get_tex_color(int x, int y)
+{
+  return tex_colors[y][x];
+}
+
+bool Material::get_is_reflective()
+{
+  return is_reflective;
+}
+
+bool Material::get_is_phong()
+{
+  return is_phong;
+}
+
+bool Material::get_is_textured()
+{
+  return is_textured;
+}
+
 void Material::read(std::istream &ins)
 {
   const std::string END_PHONG_MATERIAL_TAG = "end_material";
@@ -51,6 +82,7 @@ void Material::read(std::istream &ins)
   const std::string DIFFUSE_TAG = "diffuse";
   const std::string PHONG_TAG = "phong";
   const std::string REFLECTIVITY_TAG = "reflectivity";
+  const std::string TEXTURE_TAG = "texture";
   
   bool seen_end_tag = false;
   bool seen_color = false;
@@ -81,6 +113,7 @@ void Material::read(std::istream &ins)
     {
       seen_ambient = true;
       
+      is_phong = true;
       ins >> ambient(0);
       ins >> ambient(1);
       ins >> ambient(2);
@@ -89,21 +122,73 @@ void Material::read(std::istream &ins)
     {
       seen_diffuse = true;
       
+      is_phong = true;
       ins >> diffuse;
     }
     else if(tok == PHONG_TAG)
     {
       seen_phong = true;
       
+      is_phong = true;
       ins >> phong;
     }
     else if(tok == REFLECTIVITY_TAG)
     {
       seen_reflectivity = true;
       
+      is_reflective = true;
       ins >> reflectivity(0);
       ins >> reflectivity(1);
       ins >> reflectivity(2);
+    }
+    else if(tok == TEXTURE_TAG)
+    {
+      is_textured = true;
+      ins >> texture;
+      
+      std::clog << "Loading texture...";
+      
+      //Create 2-D vector to hold texture colors
+      std::vector<std::vector<arma::vec3>> texture_vec;
+      std::ifstream texfile;
+      texfile.open(texture);
+      
+      std::string prefix;
+      arma::vec2 dimensions;
+      int max_color;
+      std::vector<arma::vec3> colors;
+      arma::vec3 color;
+      
+      texfile >> prefix;
+      texfile >> dimensions(0);
+      texfile >> dimensions(1);
+      texfile >> max_color;
+      
+      //Create gmVector3 for each pixel and load into 1-D vector
+      while(!texfile.eof())
+      {
+        texfile >> color(0);
+        texfile >> color(1);
+        texfile >> color(2);
+        for(int i = 0; i < 3; i++)
+          color[i] /= max_color;
+        colors.push_back(color);
+      }
+      
+      //Load gmVector3 for each pixel from previous 1-D vector into 2-D vector
+      std::vector<arma::vec3> row_colors;
+      for(int row = 0; row < dimensions[1]; row++)
+      {
+        for(int col = 0; col < dimensions[0]; col++)
+        {
+          row_colors.push_back(colors[(row * dimensions[1]) + col]);
+        }
+        texture_vec.push_back(row_colors);
+        row_colors.clear();
+      }
+      tex_colors = texture_vec;
+      
+      std::clog << "\rLoading texture... Done" << std::endl;
     }
   }
 }

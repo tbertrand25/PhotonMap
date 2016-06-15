@@ -55,7 +55,7 @@ bool Sphere::intersect(std::shared_ptr<Ray> r, std::shared_ptr<Hit> h)
   else
     t = t1;
   
-  if(t < h->get_t() && t > 0.00001)
+  if(t < h->get_t() && t > tracer::epsilon)
   {
     arma::vec3 pt = r->get_origin() + (t * r->get_direction());
     arma::vec3 normal = arma::normalise(pt - center);
@@ -72,7 +72,7 @@ void Sphere::read(std::istream &ins)
   
   const std::string POSITION_TAG = "position";
   const std::string RADIUS_TAG = "radius";
-  const std::string MATERIAL_TAG = "color";
+  const std::string MATERIAL_TAG = "begin_material";
   
   bool seen_end_tag = false;
   bool seen_position = false;

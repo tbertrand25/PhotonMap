@@ -24,7 +24,7 @@ namespace tracer
   
   static arma::vec3 raycolor(std::shared_ptr<Ray> r, std::shared_ptr<Hit> h, Scene s, int hit_ct);
   static bool in_shadow(std::shared_ptr<Ray> r, Scene s);
-  static arma::vec3 reflect(arma::vec3 reflectivity, std::shared_ptr<Ray> r, std::shared_ptr<Hit> h, Scene s, int hit_ct);
+  static arma::vec3 reflection(std::shared_ptr<Ray> r, std::shared_ptr<Hit> h, Scene s, int hit_ct);
   
   static arma::vec3 calc_view_ray_direction(double row, double col, View v)
   {
@@ -53,8 +53,10 @@ namespace tracer
     return arma::normalise(viewport_pt - v.get_eye());
   }
   
-  static arma::vec3 phong_shading(std::shared_ptr<Ray> r, std::shared_ptr<Hit> h, Scene s, int hit_ct)
+  static arma::vec3 phong_shade(std::shared_ptr<Ray> r, std::shared_ptr<Hit> h, Scene s, int hit_ct)
   {
+    
+    
     arma::vec3 ambient_term;
     arma::vec3 diffuse_term;
     arma::vec3 specular_term;
@@ -68,9 +70,22 @@ namespace tracer
     std::shared_ptr<Material> mat = h->get_material();
     mat->get_phong();
     
+    arma::vec3 color;
+    if(mat->get_is_textured())
+    {
+      int x = h->get_tex_coords()(0);
+      int y = h->get_tex_coords()(1);
+      color = mat->get_tex_color(x, y);
+      ambient_term = color;
+    }
+    else
+    {
+      color = mat->get_color();
+    
     // Scale color by ambient term
     for(int i = 0; i < 3; i++)
       ambient_term(i) = mat->get_ambient()(i) * mat->get_color()(i);
+    }
     
     // Calculate diffuse and specular components for each light
     for(auto light : s.get_lights())
@@ -89,7 +104,7 @@ namespace tracer
       
       // Scale diffuse term by color and diffuse scalar
       for(int i = 0; i < 3; i++)
-        diffuse_temp(i) *= mat->get_color()(i) * mat->get_diffuse();
+        diffuse_temp(i) *= color(i) * mat->get_diffuse();
       
       // Calculate half vector and specular term for this light
       arma::vec3 half = arma::normalise(((2 * dot(light_direction, h->get_normal())) * h->get_normal()) - light_direction);
@@ -111,20 +126,28 @@ namespace tracer
     auto ref_ray = std::make_shared<Ray>(h->get_pt(), ref_dir);
    
     // Calculate reflection term
-    reflection_term = reflect(mat->get_reflectivity(), ref_ray, h, s, hit_ct);
+    if(mat->get_is_reflective())
+      reflection_term = reflection(ref_ray, h, s, hit_ct);
     
     return ambient_term + diffuse_term + specular_term + reflection_term;
   }
   
   static arma::vec3 raycolor(std::shared_ptr<Ray> r, std::shared_ptr<Hit> h, Scene s, int hit_ct)
   {
+    arma::vec3 color({0, 0, 0});
+    
     for(auto i : s.get_surfaces())
       i->intersect(r, h);
     
     if(h->get_t() != std::numeric_limits<double>::infinity())
-      return phong_shading(r, h, s, hit_ct);
+    {
+      if(h->get_material()->get_is_phong())
+        color = phong_shade(r, h, s, hit_ct);
+    }
     else
-      return arma::vec3({0.15,0.15,0.15}) / (hit_ct + 1);
+      color = arma::vec3({0.15,0.15,0.15}) / (hit_ct + 1);
+    
+    return color;
   }
   
   static bool in_shadow(std::shared_ptr<Ray> r, Scene s)
@@ -140,7 +163,7 @@ namespace tracer
       return false;
   }
   
-  static arma::vec3 reflect(arma::vec3 reflectivity, std::shared_ptr<Ray> r, std::shared_ptr<Hit> h, Scene s, int hit_ct)
+  static arma::vec3 reflection(std::shared_ptr<Ray> r, std::shared_ptr<Hit> h, Scene s, int hit_ct)
   {
     if(hit_ct < 2)
     {
@@ -148,7 +171,7 @@ namespace tracer
       arma::vec3 reflection_term = raycolor(r, reflect_h, s, hit_ct + 1);
       
       for(int i = 0; i < 3; i++)
-        reflection_term(i) *= reflectivity(i);
+        reflection_term(i) *= h->get_material()->get_reflectivity()(i);
       
       return reflection_term;
     }
@@ -160,7 +183,7 @@ namespace tracer
     return (T(0) < val) - (val < T(0));
   }
   
-  static void print_vec(arma::vec3 a)
+  static void print_vec3(arma::vec3 a)
   {
     std::clog << "[" << a(0) << ", " << a(1) << ", " << a(2) << "]" << std::endl;
   }

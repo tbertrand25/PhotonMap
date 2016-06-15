@@ -29,6 +29,11 @@ protected:
 public:
   virtual bool intersect(std::shared_ptr<Ray> r, std::shared_ptr<Hit> h) = 0;
   virtual void print(std::ostream &os) = 0;
+  
+  std::shared_ptr<Material> get_material()
+  {
+    return mat;
+  }
 };
 
 #endif /* Surface_hpp */

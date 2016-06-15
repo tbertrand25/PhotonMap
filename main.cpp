@@ -24,56 +24,56 @@
 
 namespace
 {
-// Processes a rayfile from an istream and returns the resulting Scene object
-Scene process_rayfile(std::istream &ins)
-{
-  // Begin tag for rayfile
-  const std::string BEGIN_FRAME = "begin_frame";
-  
-  // Begin tag for sphere definition
-  const std::string BEGIN_SPHERE = "begin_sphere";
-  
-  // Begin tag for quad definition
-  const std::string BEGIN_QUAD = "begin_quad";
-  
-  // Begin tag for view definition
-  const std::string BEGIN_VIEW = "begin_view";
-  
-  // Begin tag for light definition
-  const std::string BEGIN_LIGHT = "begin_light";
-  
-  // Holds current chunk of istream
-  std::string tok;
-  
-  bool seen_view = false;
-  
-  View img_view;
-  std::vector<std::shared_ptr<Surface>> surfaces;
-  std::vector<std::shared_ptr<Light>> lights;
-  
-  while(!ins.eof())
+  // Processes a rayfile from an istream and returns the resulting Scene object
+  Scene process_rayfile(std::istream &ins)
   {
-    ins >> tok;
+    // Begin tag for rayfile
+    const std::string BEGIN_FRAME = "begin_frame";
     
-    if(tok == BEGIN_VIEW && !seen_view)
+    // Begin tag for sphere definition
+    const std::string BEGIN_SPHERE = "begin_sphere";
+    
+    // Begin tag for quad definition
+    const std::string BEGIN_QUAD = "begin_quad";
+    
+    // Begin tag for view definition
+    const std::string BEGIN_VIEW = "begin_view";
+    
+    // Begin tag for light definition
+    const std::string BEGIN_LIGHT = "begin_light";
+    
+    // Holds current chunk of istream
+    std::string tok;
+    
+    bool seen_view = false;
+    
+    View img_view;
+    std::vector<std::shared_ptr<Surface>> surfaces;
+    std::vector<std::shared_ptr<Light>> lights;
+    
+    while(!ins.eof())
     {
-      img_view = View(ins);
+      ins >> tok;
+      
+      if(tok == BEGIN_VIEW && !seen_view)
+      {
+        img_view = View(ins);
+      }
+      else if(tok == BEGIN_SPHERE)
+      {
+        surfaces.push_back(std::make_shared<Sphere>(ins));
+      }
+      else if(tok == BEGIN_QUAD)
+      {
+        surfaces.push_back(std::make_shared<Quad>(ins));
+      }
+      else if(tok == BEGIN_LIGHT)
+      {
+        lights.push_back(std::make_shared<Light>(ins));
+      }
     }
-    else if(tok == BEGIN_SPHERE)
-    {
-      surfaces.push_back(std::make_shared<Sphere>(ins));
-    }
-    else if(tok == BEGIN_QUAD)
-    {
-      surfaces.push_back(std::make_shared<Quad>(ins));
-    }
-    else if(tok == BEGIN_LIGHT)
-    {
-      lights.push_back(std::make_shared<Light>(ins));
-    }
+    return Scene(img_view, surfaces, lights);
   }
-  return Scene(img_view, surfaces, lights);
-}
 }
 
 int main(int argc, const char * argv[]) {
@@ -89,16 +89,35 @@ int main(int argc, const char * argv[]) {
   
   std::cout << "255" << std::endl;
   
-  for(int row = 0; row < img_scene.get_view().get_y_res(); row++)
+  int x_res = img_scene.get_view().get_x_res();
+  int y_res = img_scene.get_view().get_y_res();
+  
+  const int samples = 9;
+  
+  arma::vec3 color;
+  arma::vec3 dir;
+  for(int row = 0; row < y_res; row++)
   {
-    for(int col = 0; col < img_scene.get_view().get_x_res(); col++)
+    for(int col = 0; col < x_res; col++)
     {
-      arma::vec3 dir = tracer::calc_view_ray_direction(row, col, img_scene.get_view());
+      color = arma::vec3({0,0,0});
       
-      r = std::make_shared<Ray>(img_scene.get_view().get_eye(), dir);
-      h = std::make_shared<Hit>();
+      for(int i = 0; i < sqrt(samples); i++)
+      {
+        for(int j = 0; j < sqrt(samples); j++)
+        {
+          dir = tracer::calc_view_ray_direction(row + ((i + (rand()/(float)(RAND_MAX))) / sqrt(samples)),
+                                                col + ((j + (rand()/(float)(RAND_MAX))) / sqrt(samples)),
+                                                img_scene.get_view());
+          
+          r = std::make_shared<Ray>(img_scene.get_view().get_eye(), dir);
+          h = std::make_shared<Hit>();
+          
+          color += tracer::raycolor(r, h, img_scene, 0);
+        }
+      }
       
-      arma::vec3 color = tracer::raycolor(r, h, img_scene, 0);
+      color /= samples;
       
       std::cout << int(color(0) * 255) << " "
                 << int(color(1) * 255) << " "

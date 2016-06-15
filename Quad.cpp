@@ -7,6 +7,7 @@
 //
 
 #include "Quad.hpp"
+#include "Tracer.h"
 
 Quad::Quad(std::istream &ins)
 {
@@ -66,6 +67,8 @@ bool Quad::intersect(std::shared_ptr<Ray> r, std::shared_ptr<Hit> h)
     arma::vec3 pt2 = vertices[face[1]];
     
     arma::vec3 pt3 = vertices[face[2]];
+    
+    arma::vec3 pt4 = vertices[face[3]];
     
     arma::vec3 normal = arma::normalise(arma::cross(pt2 - pt1, pt3 - pt1));
     
@@ -148,7 +151,40 @@ bool Quad::intersect(std::shared_ptr<Ray> r, std::shared_ptr<Hit> h)
     
     if(t < h->get_t() && nc % 2 == 1 && t > tracer::epsilon)  //if this hit is closer than the last hit
     {
-      *h = Hit(t, hit_pt, normal, mat);
+      if(mat->get_is_textured() == true)
+      {
+        //Create vectors along two adjacent edges and vector to hit point
+        arma::vec3 u_tex_vec = pt2 - pt1;
+        arma::vec3 v_tex_vec = pt4 - pt1;
+        arma::vec3 m_tex_vec = hit_pt - pt1;
+        
+        double v_length = sqrt((v_tex_vec(0) * v_tex_vec(0)) +
+                               (v_tex_vec(1) * v_tex_vec(1)) +
+                               (v_tex_vec(2) * v_tex_vec(2)));
+        double u_length = sqrt((u_tex_vec(0) * u_tex_vec(0)) +
+                               (u_tex_vec(1) * u_tex_vec(1)) +
+                               (u_tex_vec(2) * u_tex_vec(2)));
+    
+        
+        //Calculate projection of m_tex_vec onto u_tex_vec and v_tex_vec
+        double alpha = arma::dot(m_tex_vec, v_tex_vec) / v_length;
+        double beta = arma::dot(m_tex_vec, u_tex_vec) / u_length;
+        
+        //Calculate texture coordinates u, v
+        int u = round(beta * (mat->get_tex_x_size() - 1));
+        int v = round(alpha * (mat->get_tex_y_size() - 1));
+        
+        //Normalize texture coordinates u, v
+        u /= u_length;
+        v /= v_length;
+        
+        //Apply texture coordinates to hit
+        arma::vec2 tex_coords = arma::vec2({static_cast<double>(v), static_cast<double>(u)});
+
+        *h = Hit(t, hit_pt, normal, tex_coords, mat);
+      }
+      else
+        *h = Hit(t, hit_pt, normal, mat);
     }
   }
   
