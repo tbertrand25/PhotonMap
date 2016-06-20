@@ -44,6 +44,16 @@ double Material::get_phong()
   return phong;
 }
 
+double Material::get_refract_index()
+{
+  return refract_index;
+}
+
+arma::vec3 Material::get_refract_extinct()
+{
+  return refract_extinct;
+}
+
 unsigned long Material::get_tex_x_size()
 {
   return tex_colors.size();
@@ -74,6 +84,11 @@ bool Material::get_is_textured()
   return is_textured;
 }
 
+bool Material::get_is_refractive()
+{
+  return is_refractive;
+}
+
 void Material::read(std::istream &ins)
 {
   const std::string END_PHONG_MATERIAL_TAG = "end_material";
@@ -83,6 +98,8 @@ void Material::read(std::istream &ins)
   const std::string PHONG_TAG = "phong";
   const std::string REFLECTIVITY_TAG = "reflectivity";
   const std::string TEXTURE_TAG = "texture";
+  const std::string REFRACT_EXTINCT_TAG = "refract_extinct";
+  const std::string REFRACT_INDEX_TAG = "refract_index";
   
   bool seen_end_tag = false;
   bool seen_color = false;
@@ -136,10 +153,14 @@ void Material::read(std::istream &ins)
     {
       seen_reflectivity = true;
       
-      is_reflective = true;
       ins >> reflectivity(0);
       ins >> reflectivity(1);
       ins >> reflectivity(2);
+      
+      if(!(reflectivity(0) == 0 &&
+           reflectivity(1) == 0 &&
+           reflectivity(2) == 0))
+        is_reflective = true;
     }
     else if(tok == TEXTURE_TAG)
     {
@@ -189,6 +210,19 @@ void Material::read(std::istream &ins)
       tex_colors = texture_vec;
       
       std::clog << "\rLoading texture... Done" << std::endl;
+    }
+    else if(tok == REFRACT_INDEX_TAG)
+    {
+      ins >> refract_index;
+      is_refractive = true;
+    }
+    else if(tok == REFRACT_EXTINCT_TAG)
+    {
+      is_refractive = true;
+      
+      ins >> refract_extinct(0);
+      ins >> refract_extinct(1);
+      ins >> refract_extinct(2);
     }
   }
 }

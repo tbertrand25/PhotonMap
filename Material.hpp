@@ -26,6 +26,9 @@ private:
   double diffuse;
   double phong;
   
+  double refract_index;
+  arma::vec3 refract_extinct;
+  
   std::string texture;
   std::vector<std::vector<arma::vec3>> tex_colors;
   
@@ -41,14 +44,17 @@ public:
   double get_diffuse();
   double get_phong();
   
+  double get_refract_index();
+  arma::vec3 get_refract_extinct();
+  
   unsigned long get_tex_x_size();
   unsigned long get_tex_y_size();
   arma::vec3 get_tex_color(int x, int y);
-  //std::vector<std::vector<arma::vec3>> get_tex_colors();
   
   bool get_is_reflective();
   bool get_is_phong();
   bool get_is_textured();
+  bool get_is_refractive();
   void print(std::ostream &os);
 };
 

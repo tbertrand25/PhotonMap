@@ -7,7 +7,7 @@
 //
 
 #include "Quad.hpp"
-#include "Tracer.h"
+#include "Tracer.hpp"
 
 Quad::Quad(std::istream &ins)
 {
