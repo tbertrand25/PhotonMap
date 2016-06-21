@@ -60,8 +60,6 @@ namespace tracer
       
       color = mat->get_tex_color(x, y);
       
-      color /= 9;
-      
       ambient_term = color;
     }
     else
@@ -111,9 +109,9 @@ namespace tracer
     // Create reflection ray
     auto ref_ray = std::make_shared<Ray>(h->get_pt(), ref_dir);
     
-    // Calculate reflection term
-//    if(mat->get_is_reflective())
-//      reflection_term = reflection(ref_ray, h, s, hit_ct);
+    //Calculate reflection term
+    if(mat->get_is_reflective())
+      reflection_term = reflection(ref_ray, h, s, hit_ct);
     
     return ambient_term + diffuse_term + specular_term + reflection_term;
   }
@@ -159,7 +157,19 @@ namespace tracer
     refract_color[1] *= kg;
     refract_color[2] *= kb;
     
-    return refract_color;
+    arma::vec3 half;
+    arma::vec3 specular = arma::vec3({0,0,0});
+    arma::vec3 light_direction;
+    for(auto light : s.get_lights())
+    {
+      light_direction = arma::normalise(light->get_position() - h->get_pt());
+      
+      // Calculate half vector and specular term for this light
+      half = arma::normalise(((2 * dot(light_direction, h->get_normal())) * h->get_normal()) - light_direction);
+      specular += pow(std::max(arma::dot(half, arma::normalise(s.get_view().get_eye() - h->get_pt())), double(0)), 55) * light->get_color();
+    }
+    
+    return refract_color + specular;
   }
   
   bool refract(arma::vec3 dir, arma::vec3 refract_origin, arma::vec3 normal,

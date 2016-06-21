@@ -92,7 +92,7 @@ int main(int argc, const char * argv[]) {
   int x_res = img_scene.get_view().get_x_res();
   int y_res = img_scene.get_view().get_y_res();
   
-  const int samples = 16;
+  const int samples = 9;
   
   arma::vec3 color;
   arma::vec3 dir;
