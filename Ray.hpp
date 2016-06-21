@@ -19,11 +19,14 @@ private:
   arma::vec3 direction;
   
 public:
+  Ray();
   Ray(arma::vec3 origin, arma::vec3 direction);
   ~Ray();
   
   arma::vec3 get_origin();
   arma::vec3 get_direction();
+  
+  Ray& operator= (const Ray &r);
 };
 
 #endif /* Ray_hpp */

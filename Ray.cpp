@@ -14,6 +14,11 @@ Ray::Ray(arma::vec3 origin, arma::vec3 direction)
   this->direction = arma::normalise(direction);
 }
 
+Ray::Ray()
+{
+  
+}
+
 Ray::~Ray()
 {
   
@@ -27,4 +32,12 @@ arma::vec3 Ray::get_origin()
 arma::vec3 Ray::get_direction()
 {
   return direction;
+}
+
+Ray& Ray::operator= (const Ray &r)
+{
+  origin = r.origin;
+  direction = r.direction;
+  
+  return *this;
 }

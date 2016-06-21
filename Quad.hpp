@@ -15,7 +15,7 @@
 #include <cmath>
 
 #include "Surface.hpp"
-#include "Tracer.h"
+#include "Tracer.hpp"
 #include "Material.hpp"
 
 class Quad : public Surface

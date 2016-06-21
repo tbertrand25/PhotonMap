@@ -37,7 +37,7 @@ bool Sphere::intersect(std::shared_ptr<Ray> r, std::shared_ptr<Hit> h)
   
   double d2 = arma::dot(L, L) - (tca * tca);
   
-  if(d2 < 0 - 0.00001)
+  if(d2 < 0)
     return false;
   if(d2 > (radius * radius))
     return false;
@@ -55,7 +55,7 @@ bool Sphere::intersect(std::shared_ptr<Ray> r, std::shared_ptr<Hit> h)
   else
     t = t1;
   
-  if(t < h->get_t() && t > tracer::epsilon)
+  if(t < h->get_t())
   {
     arma::vec3 pt = r->get_origin() + (t * r->get_direction());
     arma::vec3 normal = arma::normalise(pt - center);

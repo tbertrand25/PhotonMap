@@ -57,7 +57,11 @@ namespace tracer
     {
       int x = h->get_tex_coords()(0);
       int y = h->get_tex_coords()(1);
+      
       color = mat->get_tex_color(x, y);
+      
+      color /= 9;
+      
       ambient_term = color;
     }
     else
@@ -108,10 +112,70 @@ namespace tracer
     auto ref_ray = std::make_shared<Ray>(h->get_pt(), ref_dir);
     
     // Calculate reflection term
-    if(mat->get_is_reflective())
-      reflection_term = reflection(ref_ray, h, s, hit_ct);
+//    if(mat->get_is_reflective())
+//      reflection_term = reflection(ref_ray, h, s, hit_ct);
     
     return ambient_term + diffuse_term + specular_term + reflection_term;
+  }
+  
+  arma::vec3 refract_shade(std::shared_ptr<Ray> r, std::shared_ptr<Hit> h, Scene s, int hit_ct)
+  {
+    arma::vec3 refract_color = arma::vec3({0,0,0});
+    
+    double refract_index = h->get_material()->get_refract_index();
+    const double ext_index = 1.0;
+    
+    auto refract_r = std::make_shared<Ray>();
+    auto refract_h = std::make_shared<Hit>();
+    
+    refract(r->get_direction(), h->get_pt(), h->get_normal(),
+            ext_index, refract_index, refract_r);
+    
+    raytrace(refract_r, refract_h, s);
+    
+    auto exit_r = std::make_shared<Ray>();
+    auto exit_h = std::make_shared<Hit>();
+    
+    refract(refract_r->get_direction(), refract_h->get_pt(), -refract_h->get_normal(),
+            refract_index, ext_index, exit_r);
+    
+    refract_color = raycolor(exit_r, exit_h, s, hit_ct + 1);
+    
+    //Calculate R0, c, and R
+    double R0, R, c, kr, kg, kb;
+    R0 = ((ext_index - 1)*(ext_index - 1))/((ext_index + 1)*(ext_index + 1));
+    c = arma::dot(refract_r->get_direction(), refract_h->get_normal());
+    R = R0 + ((1 - R0)*pow((1 - c),5));
+    
+    //Calculate extinction
+    arma::vec3 a = h->get_material()->get_refract_extinct();
+    kr = exp(-log(a[0])*refract_h->get_t());
+    kg = exp(-log(a[1])*refract_h->get_t());
+    kb = exp(-log(a[2])*refract_h->get_t());
+    
+    //Apply extinction
+    refract_color *= (1 - R);
+    refract_color[0] *= kr;
+    refract_color[1] *= kg;
+    refract_color[2] *= kb;
+    
+    return refract_color;
+  }
+  
+  bool refract(arma::vec3 dir, arma::vec3 refract_origin, arma::vec3 normal,
+               double n1, double n2, std::shared_ptr<Ray> refract_r)
+  {
+    double sqr_rt = 1 - (((n1/n2)*(n1/n2)) * (1 - (arma::dot(dir, normal) * arma::dot(dir, normal))));
+    
+    if(sqr_rt < 0)
+      return false;
+    
+    sqr_rt = sqrt(sqr_rt);
+    
+    arma::vec3 refract_dir = ((n1/n2) * dir) + ((arma::dot(dir, normal) * (n1/n2)) - sqr_rt) * normal;
+    
+    *refract_r = Ray(refract_origin + (-epsilon * normal), arma::normalise(refract_dir));
+    return true;
   }
   
   arma::vec3 raycolor(std::shared_ptr<Ray> r, std::shared_ptr<Hit> h, Scene s, int hit_ct)
@@ -124,7 +188,9 @@ namespace tracer
     if(h->get_t() != std::numeric_limits<double>::infinity())
     {
       if(h->get_material()->get_is_phong())
-        color = phong_shade(r, h, s, hit_ct);
+        color += phong_shade(r, h, s, hit_ct);
+      else if(h->get_material()->get_is_refractive())
+        color += refract_shade(r, h, s, hit_ct);
     }
     else
       color = arma::vec3({0.15,0.15,0.15}) / (hit_ct + 1);
@@ -159,6 +225,17 @@ namespace tracer
     }
     else
       return arma::vec3({0,0,0});
+  }
+  
+  bool raytrace(std::shared_ptr<Ray> r, std::shared_ptr<Hit> h, Scene s)
+  {
+    for(auto i : s.get_surfaces())
+      i->intersect(r, h);
+    
+    if(h->get_t() != std::numeric_limits<double>::infinity())
+      return true;
+    else
+      return false;
   }
   
   void print_vec3(arma::vec3 a)

@@ -149,7 +149,7 @@ bool Quad::intersect(std::shared_ptr<Ray> r, std::shared_ptr<Hit> h)
     
     //---------------------------------
     
-    if(t < h->get_t() && nc % 2 == 1 && t > tracer::epsilon)  //if this hit is closer than the last hit
+    if(t < h->get_t() && nc % 2 == 1)  //if this hit is closer than the last hit
     {
       if(mat->get_is_textured() == true)
       {

@@ -7,7 +7,7 @@
 //
 
 #include "Material.hpp"
-#include "Tracer.h"
+#include "Tracer.hpp"
 
 Material::Material(std::istream &ins)
 {
@@ -234,4 +234,6 @@ void Material::print(std::ostream &os)
   os << "diffuse: " << diffuse << "\n";
   os << "phong: " << phong << "\n";
   os << "reflectivity: [" << reflectivity(0) << ", " << reflectivity(1) << ", " << reflectivity(2) << "]\n";
+  os << "refract_index: [" << refract_extinct(0) << ", " << refract_extinct(1) << ", " << refract_extinct(2) << "]\n";
+  os << "refract_index: " << refract_index << "\n";
 }

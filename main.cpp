@@ -20,7 +20,7 @@
 #include "Hit.hpp"
 #include "Light.hpp"
 
-#include "Tracer.h"
+#include "Tracer.hpp"
 
 namespace
 {
@@ -92,36 +92,58 @@ int main(int argc, const char * argv[]) {
   int x_res = img_scene.get_view().get_x_res();
   int y_res = img_scene.get_view().get_y_res();
   
-  const int samples = 9;
+  const int samples = 16;
   
   arma::vec3 color;
   arma::vec3 dir;
-  for(int row = 0; row < y_res; row++)
+  if(samples > 1)
   {
-    for(int col = 0; col < x_res; col++)
+    for(int row = 0; row < y_res; row++)
     {
-      color = arma::vec3({0,0,0});
-      
-      for(int i = 0; i < sqrt(samples); i++)
+      for(int col = 0; col < x_res; col++)
       {
-        for(int j = 0; j < sqrt(samples); j++)
+        color = arma::vec3({0,0,0});
+        
+        for(int i = 0; i < sqrt(samples); i++)
         {
-          dir = tracer::calc_view_ray_direction(row + ((i + (rand()/(float)(RAND_MAX))) / sqrt(samples)),
-                                                col + ((j + (rand()/(float)(RAND_MAX))) / sqrt(samples)),
-                                                img_scene.get_view());
-          
-          r = std::make_shared<Ray>(img_scene.get_view().get_eye(), dir);
-          h = std::make_shared<Hit>();
-          
-          color += tracer::raycolor(r, h, img_scene, 0);
+          for(int j = 0; j < sqrt(samples); j++)
+          {
+            dir = tracer::calc_view_ray_direction(row + ((i + (rand()/(float)(RAND_MAX))) / sqrt(samples)),
+                                                  col + ((j + (rand()/(float)(RAND_MAX))) / sqrt(samples)),
+                                                  img_scene.get_view());
+            
+            r = std::make_shared<Ray>(img_scene.get_view().get_eye(), dir);
+            h = std::make_shared<Hit>();
+            
+            color += tracer::raycolor(r, h, img_scene, 0);
+          }
         }
+        
+        color /= samples;
+        
+        std::cout << int(color(0) * 255) << " "
+                  << int(color(1) * 255) << " "
+                  << int(color(2) * 255) << " ";
       }
-      
-      color /= samples;
-      
-      std::cout << int(color(0) * 255) << " "
-                << int(color(1) * 255) << " "
-                << int(color(2) * 255) << " ";
+    }
+  }
+  else
+  {
+    for(int row = 0; row < y_res; row++)
+    {
+      for(int col = 0; col < x_res; col++)
+      {
+        dir = tracer::calc_view_ray_direction(row, col, img_scene.get_view());
+        
+        r = std::make_shared<Ray>(img_scene.get_view().get_eye(), dir);
+        h = std::make_shared<Hit>();
+        
+        color = tracer::raycolor(r, h, img_scene, 0);
+        
+        std::cout << int(color(0) * 255) << " "
+        << int(color(1) * 255) << " "
+        << int(color(2) * 255) << " ";
+      }
     }
   }
   
