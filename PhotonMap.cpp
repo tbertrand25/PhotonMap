@@ -135,5 +135,263 @@ void Photon_map::locate_photons(NearestPhotons *const np, const int index) const
   if(dist2 < np->dist2[0])
   {
     // We found a photon...insert it in the candidate list
+    
+    if(np->found < np->max) {
+      // heap is not full; use array
+      np->found++;
+      np->dist2[np->found] = dist2;
+      np->index[np->found] = p;
+    }
+    else {
+      int j, parent;
+      
+      if(np->got_heap == 0) { // Do we need to build the heap?
+        // Build heap
+        float dst2;
+        const Photon *phot;
+        int half_found = np->found>>1;
+        for(int k=half_found; k>=1; k--) {
+          parent = k;
+          phot = np->index[k];
+          dst2 = np->dist2[k];
+          while(parent <= half_found) {
+            j = parent + parent;
+            if(j < np->found && np->dist2[j] < np->dist2[j+1])
+              j++;
+            if(dst2 >= np->dist2[j])
+              break;
+            np->dist2[parent] = np->dist2[j];
+            np->index[parent] = np->index[j];
+            parent =  j;
+          }
+          np->dist2[parent] = dst2;
+          np->index[parent] = phot;
+        }
+        np->got_heap = 1;
+      }
+      
+      // Insert new photon into max heap
+      // Delete largest element, insert new, and reorder the heap
+      
+      parent = 1;
+      j = 2;
+      while( j <= np->found) {
+        if(j < np->found && np->dist2[j] < np->dist2[j+1])
+          j++;
+        if(dist2 > np->dist2[j])
+          break;
+        np->dist2[parent] = np->dist2[j];
+        np->index[parent] = np->index[j];
+        parent = j;
+        j += j;
+      }
+      if(dist2 < np->dist2[parent]) {
+        np->index[parent] = p;
+        np->dist2[parent] = dist2;
+      }
+      np->dist2[0] = np->dist2[1];
+    }
+  }
+}
+
+/* store puts a photon into the flat array that will form the final kd-tree
+ *
+ * call this function to store a photon */
+
+void Photon_map::store(const float power[3], const float pos[3], const float dir[3])
+{
+  if(stored_photons >= max_photons)
+    return;
+  
+  stored_photons++;
+  Photon *const node = &photons[stored_photons];
+  
+  for(int i = 0; i < 3; i++) {
+    node->pos[i] = pos[i];
+    
+    if(node->pos[i] < bbox_min[i])
+      bbox_min[i] = node->pos[i];
+    if(node->pos[i] > bbox_max[i])
+      bbox_max[i] = node->pos[i];
+    
+    node->power[i] = power[i];
+  }
+  
+  int theta = int(acos(dir[2])*(256.0/(2.0*3.14159)));
+  if(theta > 255)
+    node->theta = 255;
+  else
+    node->theta = (unsigned char)theta;
+  
+  int phi = int(atan2(dir[1], dir[0])*(256.0/(2.0*3.14159)));
+  if(phi > 255)
+    node->phi = 255;
+  else if(phi < 0)
+    node->phi = (unsigned char)(phi + 256);
+  else
+    node->phi = (unsigned char)phi;
+}
+
+/* scale_photon_power is used to scale the power of all photons once they have
+ * been emitted from the light source. Scale = 1/(#emitted photons).
+ * Call this function after each light source is processed. */
+void Photon_map::scale_photon_power(const float scale)
+{
+  for(int i=prev_scale; i<=stored_photons; i++) {
+    photons[i].power[0] *= scale;
+    photons[i].power[1] *= scale;
+    photons[i].power[2] *= scale;
+  }
+  prev_scale = stored_photons = 1;
+}
+
+/* balance creates a left-balanced kd-tree from the flat photon array.  This 
+ * function should be called before the poton map is used for rendering */
+void Photon_map::balance(void)
+{
+  if(stored_photons > 1)
+  {
+    // allocate two temporary arrays for the balancing procedure
+    Photon **pa1 = (Photon**)malloc(sizeof(Photon*)*(stored_photons+1));
+    Photon **pa2 = (Photon**)malloc(sizeof(Photon*)*(stored_photons+1));
+    
+    for(int i = 0; i < stored_photons; i++)
+      pa2[i] = &photons[i];
+    
+    balance_segment(pa1, pa2, 1, 1, stored_photons);
+    free(pa2);
+    
+    // reorganize balanced kd-tree (make a heap)
+    int d, j=1, foo=1;
+    Photon foo_photon = photons[j];
+    
+    for(int i = 1; i <= stored_photons; i++) {
+      d = pa1[j]-photons;
+      pa1[j] = NULL;
+      if(d != foo)
+        photons[j] = photons[d];
+      else {
+          photons[j] = foo_photon;
+        
+        if(i < stored_photons) {
+          for(;foo <= stored_photons; foo++)
+            if(pa1[foo] != NULL)
+              break;
+          foo_photon = photons[foo];
+          j = foo;
+        }
+      continue;
+      }
+      j = d;
+    }
+    free(pa1);
+  }
+  half_stored_photons = stored_photons / 2 - 1;
+}
+
+#define swap(ph, a, b) { Photon *ph2=ph[a]; ph[a]=ph[b]; ph[b]=ph2;}
+
+// median_split splits the photon array into two separate pieces around the median,
+// with all photons below the median in the lower half and all photons above the
+// median in the upper half.  The comparison criteria is the axis (indicated by
+// the axis paramter) (inspired by routine in "algorithms in c++" by sedgewick)
+
+void Photon_map::median_split(Photon **p,
+                              const int start,
+                              const int end,
+                              const int median,
+                              const int axis)
+{
+  int left = start;
+  int right = end;
+  
+  while(right > left) {
+    const float v = p[right]->pos[axis];
+    
+    int i = left - 1;
+    int j = right;
+    for(;;) {
+      while(p[++i]->pos[axis] < v)
+        ;
+      while(p[--j]->pos[axis] > v && j > left)
+        ;
+      if(i >= j)
+        break;
+      swap(p, i, j);
+    }
+    
+    swap(p, i, right);
+    if(i >= median)
+      right = i - 1;
+    if(i <= median)
+      left = i + 1;
+  }
+}
+
+// See "Realistic Image Synthesis using Photon Mapping" Chapter 6
+// for an explanation of this function
+void Photon_map::balance_segment(Photon **pbal, Photon **porg, const int index,
+                                 const int start, const int end)
+{
+  //----------------------
+  //--compute new median--
+  //----------------------
+  
+  int median = 1;
+  while((4*median) <= (end-start+1))
+    median += median;
+  
+  if((3 * median) <= (end-start+1)) {
+    median += median;
+    median += start - 1;
+  } else
+    median = end-median+1;
+  
+  //---------------------------
+  //--find ais to split along--
+  //---------------------------
+  
+  int axis = 2;
+  if((bbox_max[0]-bbox_min[0]) > (bbox_max[1]-bbox_min[1]) &&
+     (bbox_max[0]-bbox_min[0]) > (bbox_max[2]-bbox_min[2]))
+    axis = 0;
+  else if((bbox_max[1]-bbox_min[1])>(bbox_max[2]-bbox_min[2]))
+    axis = 1;
+  
+  //--------------------------------------------
+  //--partition photon block around the median--
+  //--------------------------------------------
+  
+  median_split(porg, start, end, median, axis);
+  
+  pbal[index] = porg[median];
+  pbal[index]->plane = axis;
+  
+  //------------------------------------------------
+  //--recursively balance the left and right block--
+  //------------------------------------------------
+  
+  if(median > start) {
+    //balance left segment
+    if(start < median-1) {
+      const float tmp = bbox_max[axis];
+      bbox_max[axis] = pbal[index]->pos[axis];
+      balance_segment(pbal, porg, 2*index, start, median-1);
+      bbox_max[axis] = tmp;
+    } else {
+      pbal[2*index] = porg[start];
+    }
+  }
+  
+  if(median < end) {
+    //balance right segment
+    if(median + 1 < end) {
+      const float tmp = bbox_min[axis];
+      bbox_min[axis] = pbal[index]->pos[axis];
+      balance_segment(pbal, porg, 2*index+1, median+1, end);
+      bbox_min[axis] = tmp;
+    } else {
+      pbal[2*index+1] = porg[end];
+    }
   }
 }
