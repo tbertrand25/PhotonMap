@@ -82,13 +82,13 @@ void Photon_map::irradiance_estimate(float irrad[3],
     // The photon_dir call and following if can be ommitted (for speed)
     // if the scene does not have any thin surfaces
     
-    photon_dir(pdir, p);
-    if((pdir[0] * normal[0] + pdir[1] * normal[1] + pdir[2] * normal[2]) < 0.0f)
-    {
+    //photon_dir(pdir, p);
+    //if((pdir[0] * normal[0] + pdir[1] * normal[1] + pdir[2] * normal[2]) < 0.0f)
+    //{
       irrad[0] += p->power[0];
       irrad[1] += p->power[1];
       irrad[2] += p->power[2];
-    }
+    //}
   }
   
   const float tmp = (1.0f/3.14159) / (np.dist2[0]); // Estimate of density
@@ -255,7 +255,7 @@ void Photon_map::balance(void)
     Photon **pa1 = (Photon**)malloc(sizeof(Photon*)*(stored_photons+1));
     Photon **pa2 = (Photon**)malloc(sizeof(Photon*)*(stored_photons+1));
     
-    for(int i = 0; i < stored_photons; i++)
+    for(int i = 0; i <= stored_photons; i++)
       pa2[i] = &photons[i];
     
     balance_segment(pa1, pa2, 1, 1, stored_photons);
@@ -330,8 +330,11 @@ void Photon_map::median_split(Photon **p,
 
 // See "Realistic Image Synthesis using Photon Mapping" Chapter 6
 // for an explanation of this function
-void Photon_map::balance_segment(Photon **pbal, Photon **porg, const int index,
-                                 const int start, const int end)
+void Photon_map::balance_segment(Photon **pbal,
+                                 Photon **porg,
+                                 const int index,
+                                 const int start,
+                                 const int end)
 {
   //----------------------
   //--compute new median--
