@@ -72,7 +72,7 @@ void Photon_map::irradiance_estimate(float irrad[3],
   if(np.found < 8)
     return;
   
-  float pdir[3];
+  ///float pdir[3];
   
   // Sum irradiance from all photons
   for (int i = 1; i < np.found; i++)
@@ -242,7 +242,7 @@ void Photon_map::scale_photon_power(const float scale)
     photons[i].power[1] *= scale;
     photons[i].power[2] *= scale;
   }
-  prev_scale = stored_photons = 1;
+  prev_scale = stored_photons + 1;
 }
 
 /* balance creates a left-balanced kd-tree from the flat photon array.  This 

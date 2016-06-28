@@ -14,8 +14,6 @@
 #include <iostream>
 #include <math.h>
 
-#endif /* PhotonMap_hpp */
-
 // Photon
 typedef struct Photon {
   float pos[3]; // Photon position
@@ -57,6 +55,7 @@ public:
   
   void photon_dir(float *dir, const Photon *p) const;
   
+  Photon *photons;
 private:
   void balance_segment(Photon **pbal,
                        Photon **porg,
@@ -70,7 +69,7 @@ private:
                     const int median,
                     const int axis);
   
-  Photon *photons;
+  
   
   int stored_photons;
   int half_stored_photons;
@@ -85,3 +84,5 @@ private:
   float bbox_min[3];
   float bbox_max[3];
 };
+
+#endif /* PhotonMap_hpp */

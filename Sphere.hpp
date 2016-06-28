@@ -30,6 +30,9 @@ public:
   
   void print(std::ostream &os) override;
   bool intersect(std::shared_ptr<Ray> r, std::shared_ptr<Hit> h) override;
+  
+  double get_radius();
+  arma::vec3 get_center();
 };
 
 #endif /* Sphere_hpp */

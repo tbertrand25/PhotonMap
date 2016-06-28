@@ -21,6 +21,14 @@ Sphere::~Sphere()
   
 }
 
+double Sphere::get_radius() {
+  return radius;
+}
+
+arma::vec3 Sphere::get_center() {
+  return center;
+}
+
 // Tests r for intersection against <this>.
 // Returns true if r intersects <this> in front of the viewing eye, else
 //   returns false.

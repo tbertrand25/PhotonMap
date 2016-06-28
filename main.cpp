@@ -11,6 +11,8 @@
 #include <math.h>
 #include <memory>
 #include <armadillo>
+#include <fstream>
+#include <iomanip>
 
 #include "Scene.hpp"
 #include "View.hpp"
@@ -19,11 +21,14 @@
 #include "Ray.hpp"
 #include "Hit.hpp"
 #include "Light.hpp"
-
+#include "PhotonMap.hpp"
 #include "Tracer.hpp"
 
 namespace
 {
+  const int max_photons = 100000;
+  std::vector<std::shared_ptr<Sphere>> dielectric_spheres;
+  
   // Processes a rayfile from an istream and returns the resulting Scene object
   Scene process_rayfile(std::istream &ins)
   {
@@ -51,6 +56,9 @@ namespace
     std::vector<std::shared_ptr<Surface>> surfaces;
     std::vector<std::shared_ptr<Light>> lights;
     
+    // - added for photon map -
+    std::shared_ptr<Sphere> sph;
+    
     while(!ins.eof())
     {
       ins >> tok;
@@ -61,7 +69,10 @@ namespace
       }
       else if(tok == BEGIN_SPHERE)
       {
-        surfaces.push_back(std::make_shared<Sphere>(ins));
+        sph = std::make_shared<Sphere>(ins);
+        if(sph->get_material()->get_is_refractive())
+          dielectric_spheres.push_back(sph);
+        surfaces.push_back(sph);
       }
       else if(tok == BEGIN_QUAD)
       {
@@ -74,27 +85,238 @@ namespace
     }
     return Scene(img_view, surfaces, lights);
   }
+  
+//  void emit_photons_pt_light(arma::vec3 pt, Photon_map &map, Scene s)
+//  {
+//    float emitted_photons = 0.0;
+//    float x=0, y=0, z=0;
+//    
+//    arma::vec3 direction, origin;
+//    std::shared_ptr<Hit> h;
+//    std::shared_ptr<Ray> r;
+//    
+//    float pow[3] = {1,1,1};
+//    float dir[3], pos[3];
+//    
+//    double probability, roulette;
+//    
+//    while(emitted_photons < max_photons)
+//    {
+//      do {
+//        x = 2*(rand()/(float)(RAND_MAX)) - 1;
+//        y = 2*(rand()/(float)(RAND_MAX)) - 1;
+//        z = 2*(rand()/(float)(RAND_MAX)) - 1;
+//      } while(x*x + y*y + z*z > 1);
+//      
+//      direction = arma::vec3({x, y, z});
+//      origin = pt;
+//      
+////      // trace photons
+////      while(true) {
+//        r = std::make_shared<Ray>(origin, direction);
+//        h = std::make_shared<Hit>();
+//        if(tracer::raytrace(r, h, s))  // trace the ray representing the photon
+//        {
+//          
+//          if(true) // If surface is diffuse, store photon
+//          {
+//            pos[0] = h->get_pt()(0);
+//            pos[1] = h->get_pt()(1);
+//            pos[2] = h->get_pt()(2);
+//            
+//            dir[0] = r->get_direction()(0);
+//            dir[1] = r->get_direction()(1);
+//            dir[2] = r->get_direction()(2);
+//
+//            map.store(pow, pos, dir);
+//            emitted_photons++;
+//          }
+//          
+//          // determine what happens to photon using Russian roulette
+//          probability = h->get_material()->get_diffuse();
+//          roulette = (rand()/(float)(RAND_MAX));
+//          if(roulette < probability)
+//          {/* Photon is reflected */}
+//          else
+//          {/* Photon is absorbed */}
+//          
+////          break;
+////        }
+////        else  //didn't hit anything, stop tracing photon
+////          break;
+//      }
+//    }
+//    map.scale_photon_power(1/emitted_photons);
+//  }
+  
+  void build_caustics_map(Photon_map &map,
+                          std::vector<std::shared_ptr<Sphere>> dielectric_spheres,
+                          Scene s) {
+    
+    float emitted_photons = 0.0;
+    float x=0, y=0, z=0;
+    double radius;
+    arma::vec3 center;
+    std::shared_ptr<Material> mat;
+    arma::vec3 direction;
+    double n1 = 1.0, n2;
+    
+    std::vector<std::shared_ptr<Light>> lights = s.get_lights();
+    std::vector<std::shared_ptr<Surface>> surfaces = s.get_surfaces();
+    arma::vec3 light = lights[0]->get_position();
+    
+    float pow[3] = {float(lights[0]->get_color()(0)),
+                    float(lights[0]->get_color()(1)),
+                    float(lights[0]->get_color()(2))};
+    
+    float pos[3], dir[3];
+    
+    for(auto sph : dielectric_spheres) {
+      radius = sph->get_radius();
+      center = sph->get_center();
+      n2 = sph->get_material()->get_refract_index();
+      
+      while(emitted_photons < 10000) {
+        //use rejection sampling to generate points inside the sphere
+        do {
+          x = 2*(rand()/(float)(RAND_MAX)) - 1;
+          y = 2*(rand()/(float)(RAND_MAX)) - 1;
+          z = 2*(rand()/(float)(RAND_MAX)) - 1;
+          
+          x *= radius;
+          y *= radius;
+          z *= radius;
+        } while(sqrt(x*x + y*y + z*z) > radius);
+        
+        direction = arma::normalise((arma::vec3({x, y, z}) + center) - light);
+        
+        auto r = std::make_shared<Ray>(light, direction);
+        auto h = std::make_shared<Hit>();
+        
+        if(sph->intersect(r, h)) {
+          auto refract_r = std::make_shared<Ray>();
+          auto refract_h = std::make_shared<Hit>();
+          
+          tracer::refract(r->get_direction(),
+                          h->get_pt(),
+                          h->get_normal(),
+                          n1,
+                          n2,
+                          refract_r);
+          
+          if(sph->intersect(refract_r, refract_h)) {
+            auto exit_r = std::make_shared<Ray>();
+            auto exit_h = std::make_shared<Hit>();
+            
+            tracer::refract(refract_r->get_direction(),
+                            refract_h->get_pt(),
+                            -refract_h->get_normal(),
+                            n2,
+                            n1,
+                            exit_r);
+            
+            if(tracer::raytrace(exit_r, exit_h, s)) {
+              pos[0] = exit_h->get_pt()(0);
+              pos[1] = exit_h->get_pt()(1);
+              pos[2] = exit_h->get_pt()(2);
+              
+              dir[0] = exit_r->get_direction()(0);
+              dir[1] = exit_r->get_direction()(1);
+              dir[2] = exit_r->get_direction()(2);
+              
+              map.store(pow, pos, dir);
+            }
+          }
+          else {
+            std::cerr << "ERR: refracted ray missed sphere" << std::endl;
+          }
+        }
+        else {
+          std::cerr << "ERR: caustic photon missed object" << std::endl;
+        }
+        
+        emitted_photons++;
+      }
+    }
+    map.scale_photon_power(1/emitted_photons);
+  }
 }
 
+//
+//photon tracing(r, h, s) {
+//  for(surface : s.surfaces) {
+//    surface.intersect(r, h);
+//  }
+//  
+//  if(hit) {
+//    
+//    roulette for reflect or absorbed
+//    
+//    if(reflect) {
+//      reflect r
+//      reflect h
+//      
+//      photon tracing(r, h, s)
+//    }
+//    else
+//      return;
+//  }
+//  else
+//    return;
+//}
+
 int main(int argc, const char * argv[]) {
-  Scene img_scene = process_rayfile(std::cin);
+  srand(time(NULL));
+  clock_t start;
+  start = clock();
   
+  std::ifstream infile;
+  const std::string filename = "cube.ray";
+  infile.open("/Users/tyler/Documents/PhotonMap/PhotonMap/Rayfiles/" + filename);
+  
+  std::ofstream outfile;
+  outfile.open("/Users/tyler/Documents/PhotonMap/PhotonMap/Rayfiles/image.ppm");
+  
+  Scene img_scene = process_rayfile(infile);
+  
+  Photon_map caustics_map(max_photons);
+  build_caustics_map(caustics_map, dielectric_spheres, img_scene);
+  caustics_map.balance();
+  
+//  Photon_map global_map(max_photons);
+//  
+//  arma::vec3 pt({0, 2, 0});
+//  emit_photons_pt_light(pt, global_map, img_scene);
+//  
+//  global_map.balance();
+//  
+//  float irrad[3];
+//  float pos[3] = {0.5,0,0};
+//  float normal[3] = {0,1,0};
+//  global_map.irradiance_estimate(irrad, pos, normal, 0.05, 10000);
+//  
+//  for(int i = 0; i < 3; i++) { std::clog << irrad[i] << std::endl; }
+  
+  // Begin ray tracing
   std::shared_ptr<Hit> h;
   std::shared_ptr<Ray> r;
   
-  std::cout << "P3" << std::endl;
+  outfile << "P3" << std::endl;
   
-  std::cout << img_scene.get_view().get_x_res() << " "
+  outfile << img_scene.get_view().get_x_res() << " "
             << img_scene.get_view().get_y_res() << std::endl;
   
-  std::cout << "255" << std::endl;
+  outfile << "255" << std::endl;
   
   int x_res = img_scene.get_view().get_x_res();
   int y_res = img_scene.get_view().get_y_res();
   
-  const int samples = 9;
+  const int samples = 16;
   
-  arma::vec3 color;
+  float irrad[3];
+  float pos[3];
+  float normal[3];
+  arma::vec3 color, temp_color;
   arma::vec3 dir;
   if(samples > 1)
   {
@@ -115,15 +337,26 @@ int main(int argc, const char * argv[]) {
             r = std::make_shared<Ray>(img_scene.get_view().get_eye(), dir);
             h = std::make_shared<Hit>();
             
-            color += tracer::raycolor(r, h, img_scene, 0);
+            temp_color = tracer::raycolor(caustics_map, r, h, img_scene, 0);
+            
+            if(temp_color(0) > 1)
+              temp_color(0) = 1;
+            if(temp_color(1) > 1)
+              temp_color(1) = 1;
+            if(temp_color(2) > 1)
+              temp_color(2) = 1;
+            
+            color += temp_color;
           }
         }
         
         color /= samples;
         
-        std::cout << int(color(0) * 255) << " "
+        outfile << int(color(0) * 255) << " "
                   << int(color(1) * 255) << " "
                   << int(color(2) * 255) << " ";
+        
+        std::clog << "\r" << std::setprecision(4) << (((double(row) + (double(col) / double(x_res))) / double(y_res))) * 100 << " %    " << std::flush;
       }
     }
   }
@@ -138,9 +371,9 @@ int main(int argc, const char * argv[]) {
         r = std::make_shared<Ray>(img_scene.get_view().get_eye(), dir);
         h = std::make_shared<Hit>();
         
-        color = tracer::raycolor(r, h, img_scene, 0);
+        color = tracer::raycolor(caustics_map, r, h, img_scene, 0);
         
-        std::cout << int(color(0) * 255) << " "
+        outfile << int(color(0) * 255) << " "
         << int(color(1) * 255) << " "
         << int(color(2) * 255) << " ";
       }
@@ -148,7 +381,8 @@ int main(int argc, const char * argv[]) {
   }
   
   std::clog << img_scene << std::endl;
-  
+  std::clog << "Took " << ( std::clock() - start ) / (double) CLOCKS_PER_SEC << " seconds to render" << std::endl;
+  outfile.close();
   return 0;
 }
 
