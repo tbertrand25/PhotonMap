@@ -26,7 +26,7 @@
 
 namespace
 {
-  const int max_photons = 100000;
+  const int max_photons = 1000000;
   std::vector<std::shared_ptr<Sphere>> dielectric_spheres;
   
   // Processes a rayfile from an istream and returns the resulting Scene object
@@ -86,68 +86,85 @@ namespace
     return Scene(img_view, surfaces, lights);
   }
   
-//  void emit_photons_pt_light(arma::vec3 pt, Photon_map &map, Scene s)
-//  {
-//    float emitted_photons = 0.0;
-//    float x=0, y=0, z=0;
-//    
-//    arma::vec3 direction, origin;
-//    std::shared_ptr<Hit> h;
-//    std::shared_ptr<Ray> r;
-//    
-//    float pow[3] = {1,1,1};
-//    float dir[3], pos[3];
-//    
-//    double probability, roulette;
-//    
-//    while(emitted_photons < max_photons)
-//    {
-//      do {
-//        x = 2*(rand()/(float)(RAND_MAX)) - 1;
-//        y = 2*(rand()/(float)(RAND_MAX)) - 1;
-//        z = 2*(rand()/(float)(RAND_MAX)) - 1;
-//      } while(x*x + y*y + z*z > 1);
+  void photon_trace(Photon_map &global_map, std::shared_ptr<Ray> r, std::shared_ptr<Hit> h, Scene s) {
+//    if(tracer::raytrace(r, h, s)) {
+//      auto mat = h->get_material();
 //      
-//      direction = arma::vec3({x, y, z});
-//      origin = pt;
-//      
-////      // trace photons
-////      while(true) {
-//        r = std::make_shared<Ray>(origin, direction);
-//        h = std::make_shared<Hit>();
-//        if(tracer::raytrace(r, h, s))  // trace the ray representing the photon
-//        {
-//          
-//          if(true) // If surface is diffuse, store photon
-//          {
-//            pos[0] = h->get_pt()(0);
-//            pos[1] = h->get_pt()(1);
-//            pos[2] = h->get_pt()(2);
-//            
-//            dir[0] = r->get_direction()(0);
-//            dir[1] = r->get_direction()(1);
-//            dir[2] = r->get_direction()(2);
-//
-//            map.store(pow, pos, dir);
-//            emitted_photons++;
-//          }
-//          
-//          // determine what happens to photon using Russian roulette
-//          probability = h->get_material()->get_diffuse();
-//          roulette = (rand()/(float)(RAND_MAX));
-//          if(roulette < probability)
-//          {/* Photon is reflected */}
-//          else
-//          {/* Photon is absorbed */}
-//          
-////          break;
-////        }
-////        else  //didn't hit anything, stop tracing photon
-////          break;
+//      if(!mat->get_is_refractive()) {
+//        //store photon
+//        float *power, *pos, *dir;
+//        power = tracer::vec3_to_array(mat->get_color());
+//        pos = tracer::vec3_to_array(h->get_pt());
+//        dir = tracer::vec3_to_array(r->get_direction());
+//        global_map.store(power, pos, dir);
+//        
+//        bool absorbed = true;
+//        
+//        //russian roulette for outcome
+//        if(!absorbed) {
+//          //calculate reflection direction
+//        }
+//        else
+//          return;
+//      }
+//      else {
+//        // refract through object and call photon_trace
 //      }
 //    }
-//    map.scale_photon_power(1/emitted_photons);
-//  }
+    
+    if(tracer::raytrace(r, h, s)) {
+      auto mat = h->get_material();
+      float *power, *pos, *dir;
+      
+//      arma::vec3 color;
+//      if(mat->get_is_textured())
+//      {
+//        int x = h->get_tex_coords()(0);
+//        int y = h->get_tex_coords()(1);
+//        
+//        power = tracer::vec3_to_array(mat->get_tex_color(x, y));
+//      }
+//      else
+//        power = tracer::vec3_to_array(mat->get_color());
+      
+      
+      //power = tracer::vec3_to_array(mat->get_color());
+      power[0] = 1; power[1] = 1; power[2] = 1;
+      pos = tracer::vec3_to_array(h->get_pt());
+      dir = tracer::vec3_to_array(r->get_direction());
+      global_map.store(power, pos, dir);
+    }
+  }
+  
+  void emit_photons_pt_light(arma::vec3 pt, Photon_map &global_map, Scene s)
+  {
+    float emitted_photons = 0.0;
+    float x=0, y=0, z=0;
+    
+    arma::vec3 direction, origin;
+    std::shared_ptr<Hit> h;
+    std::shared_ptr<Ray> r;
+    
+    while(global_map.get_stored_photons() < max_photons)
+    {
+      do {
+        x = 2*(rand()/(float)(RAND_MAX)) - 1;
+        y = 2*(rand()/(float)(RAND_MAX)) - 1;
+        z = 2*(rand()/(float)(RAND_MAX)) - 1;
+      } while(x*x + y*y + z*z > 1);
+      
+      direction = arma::vec3({x, y, z});
+      origin = pt;
+      
+      r = std::make_shared<Ray>(origin, direction);
+      h = std::make_shared<Hit>();
+      
+      photon_trace(global_map, r, h, s);
+      
+      emitted_photons++;
+    }
+    global_map.scale_photon_power(1.0/double(global_map.get_stored_photons()));
+  }
   
   void build_caustics_map(Photon_map &map,
                           std::vector<std::shared_ptr<Sphere>> dielectric_spheres,
@@ -283,21 +300,14 @@ int main(int argc, const char * argv[]) {
   build_caustics_map(caustics_map, dielectric_spheres, img_scene);
   caustics_map.balance();
   
-//  Photon_map global_map(max_photons);
-//  
-//  arma::vec3 pt({0, 2, 0});
-//  emit_photons_pt_light(pt, global_map, img_scene);
-//  
-//  global_map.balance();
-//  
-//  float irrad[3];
-//  float pos[3] = {0.5,0,0};
-//  float normal[3] = {0,1,0};
-//  global_map.irradiance_estimate(irrad, pos, normal, 0.05, 10000);
-//  
-//  for(int i = 0; i < 3; i++) { std::clog << irrad[i] << std::endl; }
+  Photon_map global_map(max_photons);
+  emit_photons_pt_light(img_scene.get_lights()[0]->get_position(), global_map, img_scene);
+  global_map.balance();
   
-  // Begin ray tracing
+  //--------------------------------------------
+  //-----  Begin ray tracing  ------------------
+  //--------------------------------------------
+  
   std::shared_ptr<Hit> h;
   std::shared_ptr<Ray> r;
   
@@ -311,11 +321,8 @@ int main(int argc, const char * argv[]) {
   int x_res = img_scene.get_view().get_x_res();
   int y_res = img_scene.get_view().get_y_res();
   
-  const int samples = 16;
+  const int samples = 9;
   
-  float irrad[3];
-  float pos[3];
-  float normal[3];
   arma::vec3 color, temp_color;
   arma::vec3 dir;
   if(samples > 1)
@@ -337,15 +344,9 @@ int main(int argc, const char * argv[]) {
             r = std::make_shared<Ray>(img_scene.get_view().get_eye(), dir);
             h = std::make_shared<Hit>();
             
-            temp_color = tracer::raycolor(caustics_map, r, h, img_scene, 0);
-            
-            if(temp_color(0) > 1)
-              temp_color(0) = 1;
-            if(temp_color(1) > 1)
-              temp_color(1) = 1;
-            if(temp_color(2) > 1)
-              temp_color(2) = 1;
-            
+            temp_color = tracer::raycolor(global_map, caustics_map, r, h, img_scene, 0);
+
+            tracer::clamp_vec3(temp_color);
             color += temp_color;
           }
         }
@@ -355,8 +356,6 @@ int main(int argc, const char * argv[]) {
         outfile << int(color(0) * 255) << " "
                   << int(color(1) * 255) << " "
                   << int(color(2) * 255) << " ";
-        
-        std::clog << "\r" << std::setprecision(4) << (((double(row) + (double(col) / double(x_res))) / double(y_res))) * 100 << " %    " << std::flush;
       }
     }
   }
@@ -371,7 +370,9 @@ int main(int argc, const char * argv[]) {
         r = std::make_shared<Ray>(img_scene.get_view().get_eye(), dir);
         h = std::make_shared<Hit>();
         
-        color = tracer::raycolor(caustics_map, r, h, img_scene, 0);
+        color = tracer::raycolor(global_map, caustics_map, r, h, img_scene, 0);
+        
+        tracer::clamp_vec3(color);
         
         outfile << int(color(0) * 255) << " "
         << int(color(1) * 255) << " "

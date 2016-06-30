@@ -10,6 +10,27 @@
 
 namespace tracer
 {
+  float* vec3_to_array(arma::vec3 v) {
+    float *a;
+    a[0] = float(v(0));
+    a[1] = float(v(1));
+    a[2] = float(v(2));
+    return a;
+  }
+  
+  arma::vec3 array_to_vec3(float *a) {
+    return arma::vec3({a[0], a[1], a[2]});
+  }
+  
+  void clamp_vec3(arma::vec3 &v) {
+    if(v(0) > 1)
+      v(0) = 1;
+    if(v(1) > 1)
+      v(1) = 1;
+    if(v(2) > 1)
+      v(2) = 1;
+  }
+  
   arma::vec3 calc_view_ray_direction(double row, double col, View v)
   {
     const double x_res = v.get_x_res();
@@ -37,7 +58,7 @@ namespace tracer
     return arma::normalise(viewport_pt - v.get_eye());
   }
   
-  arma::vec3 phong_shade(Photon_map &map, std::shared_ptr<Ray> r, std::shared_ptr<Hit> h, Scene s, int hit_ct)
+  arma::vec3 phong_shade(Photon_map &global_map, Photon_map &caustic_map, std::shared_ptr<Ray> r, std::shared_ptr<Hit> h, Scene s, int hit_ct)
   {
     arma::vec3 ambient_term;
     arma::vec3 diffuse_term;
@@ -111,12 +132,12 @@ namespace tracer
     
     //Calculate reflection term
     if(mat->get_is_reflective())
-      reflection_term = phong_reflection(map, ref_ray, h, s, hit_ct);
+      reflection_term = phong_reflection(global_map, caustic_map, ref_ray, h, s, hit_ct);
     
     return ambient_term + diffuse_term + (0.5 * specular_term) + reflection_term;
   }
   
-  arma::vec3 refract_shade(Photon_map &map, std::shared_ptr<Ray> r, std::shared_ptr<Hit> h, Scene s, int hit_ct)
+  arma::vec3 refract_shade(Photon_map &global_map, Photon_map &caustic_map, std::shared_ptr<Ray> r, std::shared_ptr<Hit> h, Scene s, int hit_ct)
   {
     arma::vec3 refract_color = arma::vec3({0,0,0});
     
@@ -137,7 +158,7 @@ namespace tracer
     refract(refract_r->get_direction(), refract_h->get_pt(), -refract_h->get_normal(),
             refract_index, ext_index, exit_r);
     
-    refract_color = raycolor(map, exit_r, exit_h, s, hit_ct + 1);
+    refract_color = raycolor(global_map, caustic_map, exit_r, exit_h, s, hit_ct + 1);
     
     //Calculate R0, c, and R
     double R0, R, c, kr, kg, kb;
@@ -181,25 +202,7 @@ namespace tracer
     if(hit_ct < 2)
     {
       auto reflect_h = std::make_shared<Hit>();
-      reflection_color = ref_scalar * raycolor(map, ref_ray, reflect_h, s, hit_ct + 1);
-      
-//      float irrad[3], pos[3], normal[3];
-//      pos[0] = h->get_pt()(0);
-//      pos[1] = h->get_pt()(1);
-//      pos[2] = h->get_pt()(2);
-//      
-//      normal[0] = h->get_normal()(0);
-//      normal[1] = h->get_normal()(1);
-//      normal[2] = h->get_normal()(2);
-//      
-//      map.irradiance_estimate(irrad, pos, normal, 0.15, 1000);
-//      
-//      //if(irrad[0] != 0.0) {
-//      //std::clog << irrad[0] << std::endl;
-//      reflection_color(0) += reflection_color(0) * irrad[0];
-//      reflection_color(1) += reflection_color(1) * irrad[1];
-//      reflection_color(2) += reflection_color(2) * irrad[2];
-//      //}
+      reflection_color = ref_scalar * raycolor(global_map, caustic_map, ref_ray, reflect_h, s, hit_ct + 1);
     }
     
     return refract_color + specular + reflection_color;
@@ -208,16 +211,6 @@ namespace tracer
   bool refract(arma::vec3 dir, arma::vec3 refract_origin, arma::vec3 normal,
                double n1, double n2, std::shared_ptr<Ray> refract_r)
   {
-    //    double sqr_rt = 1 - (((n1/n2)*(n1/n2)) * (1 - (arma::dot(dir, normal) * arma::dot(dir, normal))));
-    //
-    //    if(sqr_rt < 0)
-    //      return false;
-    //
-    //    sqr_rt = sqrt(sqr_rt);
-    //
-    //    arma::vec3 refract_dir = ((n1/n2) * dir) + ((arma::dot(dir, normal) * (n1/n2)) - sqr_rt) * normal;
-    //
-    //    *refract_r = Ray(refract_origin + (-epsilon * normal), arma::normalise(refract_dir));
     arma::vec3 term1, term2;
     double term2_sqr;
     
@@ -239,7 +232,7 @@ namespace tracer
     return true;
   }
   
-  arma::vec3 raycolor(Photon_map &map, std::shared_ptr<Ray> r, std::shared_ptr<Hit> h, Scene s, int hit_ct)
+  arma::vec3 raycolor(Photon_map &global_map, Photon_map &caustic_map, std::shared_ptr<Ray> r, std::shared_ptr<Hit> h, Scene s, int hit_ct)
   {
     arma::vec3 color({0, 0, 0});
     
@@ -248,28 +241,37 @@ namespace tracer
     
     if(h->get_t() != std::numeric_limits<double>::infinity())
     {
-      if(h->get_material()->get_is_phong())
-        color += phong_shade(map, r, h, s, hit_ct);
-      else if(h->get_material()->get_is_refractive())
-        color += refract_shade(map, r, h, s, hit_ct);
+      if(h->get_material()->get_is_phong()) {
+        //color += phong_shade(global_map, caustic_map, r, h, s, hit_ct);
       
-      float irrad[3], pos[3], normal[3];
-      pos[0] = h->get_pt()(0);
-      pos[1] = h->get_pt()(1);
-      pos[2] = h->get_pt()(2);
-      
-      normal[0] = h->get_normal()(0);
-      normal[1] = h->get_normal()(1);
-      normal[2] = h->get_normal()(2);
-      
-      map.irradiance_estimate(irrad, pos, normal, 0.15, 1000);
-      
-      //if(irrad[0] != 0.0) {
-        //std::clog << irrad[0] << std::endl;
-        color(0) += irrad[0] * 0.15;
-        color(1) += irrad[1] * 0.15;
-        color(2) += irrad[2] * 0.15;
-      //}
+        float caustic_irrad[3], global_irrad[3];
+        float *pos, *normal;
+        pos = vec3_to_array(h->get_pt());
+        normal = vec3_to_array(h->get_normal());
+        
+        caustic_map.irradiance_estimate(caustic_irrad, pos, normal, 0.15, 1000);
+        global_map.irradiance_estimate(global_irrad, pos, normal, 0.15, 1000);
+        
+        color = array_to_vec3(global_irrad) / (0.15 * 0.15);
+        
+        for(int i = 0; i < 3; i++)
+        {
+          if(h->get_material()->get_is_textured()) {
+            color(i) *= h->get_material()->get_tex_color(h->get_tex_coords()(0),
+                                                         h->get_tex_coords()(1))(i);
+          }
+          else {
+            color(i) *= h->get_material()->get_color()(i);
+          }
+        }
+        
+        color(0) += caustic_irrad[0] * 0.15;
+        color(1) += caustic_irrad[1] * 0.15;
+        color(2) += caustic_irrad[2] * 0.15;
+      }
+      else if(h->get_material()->get_is_refractive()) {
+        color += refract_shade(global_map, caustic_map, r, h, s, hit_ct);
+      }
     }
     else
       color = arma::vec3({0.15,0.15,0.15}) / (hit_ct + 1);
@@ -290,12 +292,12 @@ namespace tracer
       return false;
   }
   
-  arma::vec3 phong_reflection(Photon_map &map, std::shared_ptr<Ray> r, std::shared_ptr<Hit> h, Scene s, int hit_ct)
+  arma::vec3 phong_reflection(Photon_map &global_map, Photon_map &caustic_map, std::shared_ptr<Ray> r, std::shared_ptr<Hit> h, Scene s, int hit_ct)
   {
     if(hit_ct < 2)
     {
       auto reflect_h = std::make_shared<Hit>();
-      arma::vec3 reflection_term = raycolor(map, r, reflect_h, s, hit_ct + 1);
+      arma::vec3 reflection_term = raycolor(global_map, caustic_map, r, reflect_h, s, hit_ct + 1);
       
       for(int i = 0; i < 3; i++)
         reflection_term(i) *= h->get_material()->get_reflectivity()(i);

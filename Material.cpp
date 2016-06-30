@@ -176,13 +176,18 @@ void Material::read(std::istream &ins)
       
       std::string prefix;
       arma::vec2 dimensions;
+      int xdim, ydim;
       int max_color;
       std::vector<arma::vec3> colors;
       arma::vec3 color;
       
       texfile >> prefix;
-      texfile >> dimensions(0);
-      texfile >> dimensions(1);
+      texfile >> xdim;
+      texfile >> ydim;
+      //texfile >> dimensions(0);
+      //texfile >> dimensions(1);
+      dimensions(0) = xdim;
+      dimensions(1) = ydim;
       texfile >> max_color;
       
       //Create gmVector3 for each pixel and load into 1-D vector
@@ -202,7 +207,7 @@ void Material::read(std::istream &ins)
       {
         for(int col = 0; col < dimensions[0]; col++)
         {
-          row_colors.push_back(colors[(row * dimensions[1]) + col]);
+          row_colors.push_back(colors[(row * dimensions[0]) + col]);
         }
         texture_vec.push_back(row_colors);
         row_colors.clear();

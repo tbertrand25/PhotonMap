@@ -56,6 +56,8 @@ public:
   void photon_dir(float *dir, const Photon *p) const;
   
   Photon *photons;
+  
+  int get_stored_photons() { return stored_photons; }
 private:
   void balance_segment(Photon **pbal,
                        Photon **porg,
