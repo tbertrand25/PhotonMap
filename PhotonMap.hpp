@@ -2,8 +2,8 @@
 //  PhotonMap.hpp
 //  PhotonMap
 //
-//  Created by Tyler Bertrand on 6/15/16.
-//  Copyright © 2016 Tyler Bertrand. All rights reserved.
+//  Implementation mostly borrowed from Henrik Wann Jensen's book
+//  "Realistic Image Synthesis using Photon Mapping"
 //
 
 #ifndef PhotonMap_hpp
@@ -13,6 +13,8 @@
 #include <stdlib.h>
 #include <iostream>
 #include <math.h>
+
+#include <armadillo>
 
 // Photon
 typedef struct Photon {
@@ -58,6 +60,11 @@ public:
   Photon *photons;
   
   int get_stored_photons() { return stored_photons; }
+  
+//  double dot(float* a, float* b) {
+//    return (a[0]*b[0]) + (a[1]*b[1]) + (a[2]*b[2]);
+//  }
+  
 private:
   void balance_segment(Photon **pbal,
                        Photon **porg,

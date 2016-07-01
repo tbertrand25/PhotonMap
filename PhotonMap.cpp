@@ -2,8 +2,8 @@
 //  PhotonMap.cpp
 //  PhotonMap
 //
-//  Created by Tyler Bertrand on 6/15/16.
-//  Copyright © 2016 Tyler Bertrand. All rights reserved.
+//  Implementation mostly borrowed from Henrik Wann Jensen's book
+//  "Realistic Image Synthesis using Photon Mapping"
 //
 
 #include "PhotonMap.hpp"
@@ -72,23 +72,28 @@ void Photon_map::irradiance_estimate(float irrad[3],
   if(np.found < 8)
     return;
   
-  ///float pdir[3];
+  double comp, mag;
+  double pt_vec[3];
+  double norm[3] = {normal[0]*max_dist, normal[1]*max_dist, normal[2]*max_dist};
   
   // Sum irradiance from all photons
   for (int i = 1; i < np.found; i++)
   {
     const Photon *p = np.index[i];
     
-    // The photon_dir call and following if can be ommitted (for speed)
-    // if the scene does not have any thin surfaces
+    pt_vec[0] = p->pos[0] - pos[0];
+    pt_vec[1] = p->pos[1] - pos[1];
+    pt_vec[2] = p->pos[2] - pos[2];
     
-    //photon_dir(pdir, p);
-    //if((pdir[0] * normal[0] + pdir[1] * normal[1] + pdir[2] * normal[2]) < 0.0f)
-    //{
+//    comp = ((norm[0]*pt_vec[0])+(norm[1]*pt_vec[1])+(norm[2]*pt_vec[2]))/max_dist;
+//    mag = sqrt(pt_vec[0] * pt_vec[0] + pt_vec[1] * pt_vec[1] + pt_vec[2] * pt_vec[2]);
+
+    if((normal[0]*pt_vec[0])+(normal[1]*pt_vec[1])+(normal[2]*pt_vec[2]) < 0.0001) {
+    //if(comp < 0.001) {
       irrad[0] += p->power[0];
       irrad[1] += p->power[1];
       irrad[2] += p->power[2];
-    //}
+    }
   }
   
   const float tmp = (1.0f/3.14159) / (np.dist2[0]); // Estimate of density

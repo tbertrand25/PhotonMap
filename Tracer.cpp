@@ -190,22 +190,23 @@ namespace tracer
       specular += pow(std::max(arma::dot(half, arma::normalise(s.get_view().get_eye() - h->get_pt())), double(0)), 55) * light->get_color();
     }
     
-    arma::vec3 reflection_color = arma::vec3({0, 0, 0});
-    const double ref_scalar = 0.3;
+//    arma::vec3 reflection_color = arma::vec3({0, 0, 0});
+//    const double ref_scalar = 0.2;
+//    
+//    // Create reflection ray
+//    // Calculate reflection direction
+//    arma::vec3 ref_dir = arma::normalise(r->get_direction() - (2*arma::dot(r->get_direction(), h->get_normal()) * h->get_normal()));
+//    auto ref_ray = std::make_shared<Ray>(h->get_pt(), ref_dir);
+//    
+//    //Calculate reflection term
+//    if(hit_ct < 2)
+//    {
+//      auto reflect_h = std::make_shared<Hit>();
+//      reflection_color = ref_scalar * raycolor(global_map, caustic_map, ref_ray, reflect_h, s, hit_ct + 1);
+//      tracer::clamp_vec3(reflection_color);
+//    }
     
-    // Create reflection ray
-    // Calculate reflection direction
-    arma::vec3 ref_dir = arma::normalise(r->get_direction() - (2*arma::dot(r->get_direction(), h->get_normal()) * h->get_normal()));
-    auto ref_ray = std::make_shared<Ray>(h->get_pt(), ref_dir);
-    
-    //Calculate reflection term
-    if(hit_ct < 2)
-    {
-      auto reflect_h = std::make_shared<Hit>();
-      reflection_color = ref_scalar * raycolor(global_map, caustic_map, ref_ray, reflect_h, s, hit_ct + 1);
-    }
-    
-    return refract_color + specular + reflection_color;
+    return refract_color + specular;// + reflection_color;
   }
   
   bool refract(arma::vec3 dir, arma::vec3 refract_origin, arma::vec3 normal,
@@ -244,15 +245,16 @@ namespace tracer
       if(h->get_material()->get_is_phong()) {
         //color += phong_shade(global_map, caustic_map, r, h, s, hit_ct);
       
-        float caustic_irrad[3], global_irrad[3];
+        float caustic_irrad[3], direct_irrad[3];
         float *pos, *normal;
         pos = vec3_to_array(h->get_pt());
         normal = vec3_to_array(h->get_normal());
         
         caustic_map.irradiance_estimate(caustic_irrad, pos, normal, 0.15, 1000);
-        global_map.irradiance_estimate(global_irrad, pos, normal, 0.15, 1000);
+        global_map.irradiance_estimate(direct_irrad, pos, normal, 0.15, 1000);
         
-        color = array_to_vec3(global_irrad) / (0.15 * 0.15);
+        color = array_to_vec3(direct_irrad) / (0.15 * 0.15);
+        //color = s.get_lights()[0]->get_color();
         
         for(int i = 0; i < 3; i++)
         {
@@ -265,9 +267,9 @@ namespace tracer
           }
         }
         
-        color(0) += caustic_irrad[0] * 0.15;
-        color(1) += caustic_irrad[1] * 0.15;
-        color(2) += caustic_irrad[2] * 0.15;
+        color(0) += caustic_irrad[0] * 0.3;
+        color(1) += caustic_irrad[1] * 0.3;
+        color(2) += caustic_irrad[2] * 0.3;
       }
       else if(h->get_material()->get_is_refractive()) {
         color += refract_shade(global_map, caustic_map, r, h, s, hit_ct);

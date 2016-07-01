@@ -179,7 +179,7 @@ bool Quad::intersect(std::shared_ptr<Ray> r, std::shared_ptr<Hit> h)
         v /= v_length;
         
         //Apply texture coordinates to hit
-        arma::vec2 tex_coords = arma::vec2({static_cast<double>(v), static_cast<double>(u)});
+        arma::vec2 tex_coords = arma::vec2({static_cast<double>(u), static_cast<double>(v)});
 
         *h = Hit(t, hit_pt, normal, tex_coords, mat);
       }
