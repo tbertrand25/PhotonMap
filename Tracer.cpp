@@ -190,14 +190,14 @@ namespace tracer
       specular += pow(std::max(arma::dot(half, arma::normalise(s.get_view().get_eye() - h->get_pt())), double(0)), 55) * light->get_color();
     }
     
-//    arma::vec3 reflection_color = arma::vec3({0, 0, 0});
-//    const double ref_scalar = 0.2;
-//    
-//    // Create reflection ray
-//    // Calculate reflection direction
-//    arma::vec3 ref_dir = arma::normalise(r->get_direction() - (2*arma::dot(r->get_direction(), h->get_normal()) * h->get_normal()));
-//    auto ref_ray = std::make_shared<Ray>(h->get_pt(), ref_dir);
-//    
+    arma::vec3 reflection_color = arma::vec3({0, 0, 0});
+    const double ref_scalar = 0.2;
+    
+    // Create reflection ray
+    // Calculate reflection direction
+    arma::vec3 ref_dir = arma::normalise(r->get_direction() - (2*arma::dot(r->get_direction(), h->get_normal()) * h->get_normal()));
+    auto ref_ray = std::make_shared<Ray>(h->get_pt(), ref_dir);
+//
 //    //Calculate reflection term
 //    if(hit_ct < 2)
 //    {
@@ -205,8 +205,20 @@ namespace tracer
 //      reflection_color = ref_scalar * raycolor(global_map, caustic_map, ref_ray, reflect_h, s, hit_ct + 1);
 //      tracer::clamp_vec3(reflection_color);
 //    }
+    auto reflect_h = std::make_shared<Hit>();
     
-    return refract_color + specular;// + reflection_color;
+    if(raytrace(ref_ray, reflect_h, s))
+    {
+      float caustic_irrad[3];
+      float *pos, *normal;
+      normal = vec3_to_array(reflect_h->get_normal());
+      pos = vec3_to_array(reflect_h->get_pt());
+      caustic_map.irradiance_estimate(caustic_irrad, pos, normal, 0.2, 1000);
+      reflection_color = array_to_vec3(caustic_irrad);
+      reflection_color *= 0.3;
+    }
+    
+    return refract_color + specular + reflection_color;
   }
   
   bool refract(arma::vec3 dir, arma::vec3 refract_origin, arma::vec3 normal,
@@ -250,11 +262,11 @@ namespace tracer
         pos = vec3_to_array(h->get_pt());
         normal = vec3_to_array(h->get_normal());
         
-        caustic_map.irradiance_estimate(caustic_irrad, pos, normal, 0.15, 1000);
+        caustic_map.irradiance_estimate(caustic_irrad, pos, normal, 0.15, 500);
         global_map.irradiance_estimate(direct_irrad, pos, normal, 0.15, 1000);
         
-        color = array_to_vec3(direct_irrad) / (0.15 * 0.15);
-        //color = s.get_lights()[0]->get_color();
+        
+        color += array_to_vec3(direct_irrad) * 44;
         
         for(int i = 0; i < 3; i++)
         {

@@ -85,11 +85,10 @@ void Photon_map::irradiance_estimate(float irrad[3],
     pt_vec[1] = p->pos[1] - pos[1];
     pt_vec[2] = p->pos[2] - pos[2];
     
-//    comp = ((norm[0]*pt_vec[0])+(norm[1]*pt_vec[1])+(norm[2]*pt_vec[2]))/max_dist;
-//    mag = sqrt(pt_vec[0] * pt_vec[0] + pt_vec[1] * pt_vec[1] + pt_vec[2] * pt_vec[2]);
+    comp = ((norm[0]*pt_vec[0])+(norm[1]*pt_vec[1])+(norm[2]*pt_vec[2]))/max_dist;
+    mag = sqrt(pt_vec[0] * pt_vec[0] + pt_vec[1] * pt_vec[1] + pt_vec[2] * pt_vec[2]);
 
-    if((normal[0]*pt_vec[0])+(normal[1]*pt_vec[1])+(normal[2]*pt_vec[2]) < 0.0001) {
-    //if(comp < 0.001) {
+    if(comp < 0.0001) {
       irrad[0] += p->power[0];
       irrad[1] += p->power[1];
       irrad[2] += p->power[2];
