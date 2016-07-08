@@ -49,6 +49,8 @@ namespace tracer
   
   void print_vec3(arma::vec3 a);
   
+  arma::vec3 hemisphere_sample(arma::vec3 normal);
+  
   template <typename T> int signum(T val) {
     return (T(0) < val) - (val < T(0));
   }

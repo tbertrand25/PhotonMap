@@ -213,9 +213,8 @@ namespace tracer
       float *pos, *normal;
       normal = vec3_to_array(reflect_h->get_normal());
       pos = vec3_to_array(reflect_h->get_pt());
-      caustic_map.irradiance_estimate(caustic_irrad, pos, normal, 0.2, 1000);
+      caustic_map.irradiance_estimate(caustic_irrad, pos, normal, 0.1, 100);
       reflection_color = array_to_vec3(caustic_irrad);
-      reflection_color *= 0.3;
     }
     
     return refract_color + specular + reflection_color;
@@ -254,20 +253,42 @@ namespace tracer
     
     if(h->get_t() != std::numeric_limits<double>::infinity())
     {
-      if(h->get_material()->get_is_phong()) {
-        //color += phong_shade(global_map, caustic_map, r, h, s, hit_ct);
+      auto mat = h->get_material();
       
+      if(h->get_material()->get_is_phong()) {
+        arma::vec3 mat_color;
         float caustic_irrad[3], direct_irrad[3];
         float *pos, *normal;
         pos = vec3_to_array(h->get_pt());
         normal = vec3_to_array(h->get_normal());
         
+        for(int i = 0; i < 3; i++)
+        {
+          if(h->get_material()->get_is_textured()) {
+            mat_color(i) *= h->get_material()->get_tex_color(h->get_tex_coords()(0),
+                                                         h->get_tex_coords()(1))(i);
+          }
+          else {
+            mat_color(i) = h->get_material()->get_color()(i);
+          }
+        }
+        
         caustic_map.irradiance_estimate(caustic_irrad, pos, normal, 0.15, 500);
-        global_map.irradiance_estimate(direct_irrad, pos, normal, 0.15, 1000);
+        global_map.irradiance_estimate(direct_irrad, pos, normal, 0.2, 2000);
+      
+        arma::vec3 light_dir = arma::normalise(s.get_lights()[0]->get_position() - h->get_pt());
         
+        double lamb_dot = arma::dot(h->get_normal(), light_dir);
         
-        color += array_to_vec3(direct_irrad) * 44;
+        if(lamb_dot < 0)
+          lamb_dot = 0;
         
+        arma::vec3 lambertian = lamb_dot * mat_color;
+        
+        arma::vec3 direct_color = (array_to_vec3(direct_irrad) * 30);
+
+        color = lambertian;
+        color = direct_color;
         for(int i = 0; i < 3; i++)
         {
           if(h->get_material()->get_is_textured()) {
@@ -279,9 +300,46 @@ namespace tracer
           }
         }
         
-        color(0) += caustic_irrad[0] * 0.3;
-        color(1) += caustic_irrad[1] * 0.3;
-        color(2) += caustic_irrad[2] * 0.3;
+//        arma::vec3 gather_dir;
+//        arma::vec3 gather_origin;
+//        arma::vec3 gather_irrad_temp;
+//        arma::vec3 gather_irrad_vec;
+//        std::shared_ptr<Ray> gather_r;
+//        std::shared_ptr<Hit> gather_h;
+//        float gather_irrad[3];
+//        
+//        for(int i = 0; i < 100; i++) {
+//          gather_dir = hemisphere_sample(h->get_normal());
+//          gather_origin = h->get_pt() + (tracer::epsilon * gather_dir);
+//          
+//          gather_r = std::make_shared<Ray>(gather_origin, gather_dir);
+//          gather_h = std::make_shared<Hit>();
+//          
+//          if(raytrace(gather_r, gather_h, s)) {
+//            if(!gather_h->get_material()->get_is_refractive()) {
+//              pos = vec3_to_array(gather_h->get_pt());
+//              normal = vec3_to_array(gather_h->get_normal());
+//
+//              global_map.irradiance_estimate(gather_irrad, pos, normal, 0.15, 200);
+//              gather_irrad_temp = (array_to_vec3(gather_irrad) * 15);
+//              
+//              for(int i = 0; i < 3; i++) {
+//                gather_irrad_temp(i) *= gather_h->get_material()->get_color()(i);
+//              }
+//              
+//              gather_irrad_vec += gather_irrad_temp;
+//            }
+//          }
+//        }
+//        gather_irrad_vec /= 100;
+        
+//        for(int i = 0; i < 3; i++) {
+//          color(i) = (color(i)*0.6) + gather_irrad_vec(i);
+//        }
+        
+        color(0) += caustic_irrad[0];
+        color(1) += caustic_irrad[1];
+        color(2) += caustic_irrad[2];
       }
       else if(h->get_material()->get_is_refractive()) {
         color += refract_shade(global_map, caustic_map, r, h, s, hit_ct);
@@ -336,5 +394,36 @@ namespace tracer
   void print_vec3(arma::vec3 a)
   {
     std::clog << "[" << a(0) << ", " << a(1) << ", " << a(2) << "]" << std::endl;
+  }
+  
+  arma::vec3 hemisphere_sample(arma::vec3 normal) {
+    float xi1 = (float)rand()/(float)RAND_MAX;
+    float xi2 = (float)rand()/(float)RAND_MAX;
+    
+    float theta = acos(sqrt(1.0-xi1));
+    float phi = 2.0 * 3.14159 * xi2;
+    
+    float xs = sinf(theta) * cosf(phi);
+    float ys = cosf(theta);
+    float zs = sinf(theta) * sinf(phi);
+    
+    arma::vec3 y({normal(0), normal(1), normal(2)});
+    arma::vec3 h = y;
+    
+    if(fabs(h(0)) <= fabs(h(1)) && fabs(h(0)) <= fabs(h(2))) {
+      h(0) = 1.0;
+    }
+    else if(fabs(h(1)) <= fabs(h(0)) && fabs(h(1)) <= fabs(h(2))) {
+      h(1) = 1.0;
+    }
+    else {
+      h(2) = 1.0;
+    }
+    
+    arma::vec3 x = arma::cross(h, y);
+    arma::vec3 z = arma::cross(x, y);
+    
+    arma::vec3 direction = xs * x + ys * y + zs * z;
+    return arma::normalise(direction);
   }
 }
